@@ -1,0 +1,50 @@
+/*
+ * The typesetting fonts, bundled with the app (they used to come from Google Fonts), so the
+ * desktop app and the PWA lay out Nastaliq identically with no network connection.
+ * Each @fontsource file declares unicode-range subsets, so only the scripts in use load.
+ */
+@import '@fontsource/noto-nastaliq-urdu/400.css';
+@import '@fontsource/noto-nastaliq-urdu/500.css';
+@import '@fontsource/noto-nastaliq-urdu/600.css';
+@import '@fontsource/noto-nastaliq-urdu/700.css';
+@import '@fontsource/gulzar/400.css';
+
+@import '@fontsource/amiri/400.css';
+@import '@fontsource/amiri/400-italic.css';
+@import '@fontsource/amiri/700.css';
+@import '@fontsource/amiri/700-italic.css';
+@import '@fontsource/amiri-quran/400.css';
+@import '@fontsource/aref-ruqaa/400.css';
+@import '@fontsource/aref-ruqaa/700.css';
+@import '@fontsource/rakkas/400.css';
+
+@import '@fontsource/lateef/400.css';
+@import '@fontsource/lateef/500.css';
+@import '@fontsource/lateef/600.css';
+@import '@fontsource/lateef/700.css';
+@import '@fontsource/scheherazade-new/400.css';
+@import '@fontsource/scheherazade-new/500.css';
+@import '@fontsource/scheherazade-new/600.css';
+@import '@fontsource/scheherazade-new/700.css';
+
+@import '@fontsource/noto-kufi-arabic/400.css';
+@import '@fontsource/noto-kufi-arabic/500.css';
+@import '@fontsource/noto-kufi-arabic/600.css';
+@import '@fontsource/noto-kufi-arabic/700.css';
+@import '@fontsource/noto-sans-arabic/400.css';
+@import '@fontsource/noto-sans-arabic/500.css';
+@import '@fontsource/noto-sans-arabic/600.css';
+@import '@fontsource/noto-sans-arabic/700.css';
+@import '@fontsource/reem-kufi/400.css';
+@import '@fontsource/reem-kufi/500.css';
+@import '@fontsource/reem-kufi/600.css';
+@import '@fontsource/reem-kufi/700.css';
+@import '@fontsource/readex-pro/400.css';
+@import '@fontsource/readex-pro/500.css';
+@import '@fontsource/readex-pro/600.css';
+@import '@fontsource/readex-pro/700.css';
+
+@import '@fontsource/plus-jakarta-sans/400.css';
+@import '@fontsource/plus-jakarta-sans/500.css';
+@import '@fontsource/plus-jakarta-sans/600.css';
+@import '@fontsource/plus-jakarta-sans/700.css';

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the editor window may call: core events (to hear about opened files) and the app's own commands. Dialogs are opened from Rust, so the webview gets no dialog or filesystem permissions.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

@@ -1,0 +1,195 @@
+# Builds the downloads on GitHub's servers from this repository's source:
+#   Windows  - setup.exe (NSIS), .msi, and a portable .zip
+#   macOS    - .dmg for Apple Silicon and for Intel (unsigned: first launch is right-click > Open)
+#   Linux    - .AppImage, .deb, .rpm
+#   Android  - experimental debug-signed .apk (sideload); a failure here never blocks a release
+# A pushed tag vX.Y.Z (matching package.json's version) publishes a GitHub release with them and
+# SHA256SUMS.txt. Run by hand (Actions > Release > Run workflow) it only builds and keeps the
+# files as workflow artifacts; nothing is published.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          v=$(node -p "require('./package.json').version")
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} but package.json says $v"; exit 1; }
+
+  desktop:
+    needs: check-version
+    permissions:
+      contents: write # uploads to the draft release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            label: windows-x64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            label: macos-apple-silicon
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            label: macos-intel
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            label: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux webview libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Toolchain
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - run: npm ci
+
+      - name: Build installers
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --target ${{ matrix.target }}
+          # On a tag: attach to a draft release that the publish job finalises.
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: Qalam Urdu Studio ${{ github.ref_name }}
+          releaseBody: See CHANGELOG.md. Verify downloads against SHA256SUMS.txt.
+          releaseDraft: true
+          prerelease: false
+
+      - name: Portable zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $v = node -p "require('./package.json').version"
+          $dir = "Qalam-Urdu-Studio-$v-portable"
+          New-Item -ItemType Directory $dir | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/qalam-urdu-studio.exe" "$dir/Qalam Urdu Studio.exe"
+          "Portable Qalam Urdu Studio. Needs Microsoft Edge WebView2 (built into Windows 10/11)." | Out-File "$dir/README.txt" -Encoding utf8
+          Compress-Archive -Path $dir -DestinationPath "$dir-windows-x64.zip"
+
+      - name: Attach portable zip
+        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" (Get-ChildItem *-portable-windows-x64.zip).FullName --clobber
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qalam-${{ matrix.label }}
+          path: |
+            target/${{ matrix.target }}/release/bundle/**/*.exe
+            target/${{ matrix.target }}/release/bundle/**/*.msi
+            target/${{ matrix.target }}/release/bundle/**/*.dmg
+            target/${{ matrix.target }}/release/bundle/**/*.AppImage
+            target/${{ matrix.target }}/release/bundle/**/*.deb
+            target/${{ matrix.target }}/release/bundle/**/*.rpm
+            *-portable-windows-x64.zip
+          if-no-files-found: ignore
+          retention-days: 14
+
+  android:
+    needs: check-version
+    continue-on-error: true
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: NDK
+        run: |
+          sdkmanager --install "ndk;27.2.12479018"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - name: Toolchain
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: android
+      - run: npm ci
+      - name: Generate the Android project
+        run: |
+          npx tauri android init --ci
+          npx tauri icon public/icon.svg
+      - name: Build APK
+        run: npx tauri android build --apk --debug --ci
+      - name: Collect APK
+        run: |
+          v=$(node -p "require('./package.json').version")
+          apk=$(find src-tauri/gen/android -name '*universal*debug*.apk' -o -name '*-debug.apk' | head -n1)
+          cp "$apk" "Qalam-Urdu-Studio-$v-android-experimental.apk"
+      - name: Attach APK
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" Qalam-Urdu-Studio-*-android-experimental.apk --clobber
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qalam-android
+          path: Qalam-Urdu-Studio-*-android-experimental.apk
+          retention-days: 14
+
+  publish:
+    # Waits for the desktop builds; Android is best-effort (attached if it finished in time).
+    needs: [desktop, android]
+    if: always() && startsWith(github.ref, 'refs/tags/') && needs.desktop.result == 'success'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: SHA256SUMS.txt
+        run: |
+          mkdir assets && cd assets
+          gh release download "$GITHUB_REF_NAME" --pattern '*' --skip-existing
+          rm -f SHA256SUMS.txt *.sig
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release upload "$GITHUB_REF_NAME" SHA256SUMS.txt --clobber
+      - name: Publish the release
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest
