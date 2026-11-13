@@ -2,16 +2,22 @@
 #   Windows  - setup.exe (NSIS), .msi, and a portable .zip
 #   macOS    - .dmg for Apple Silicon and for Intel (unsigned: first launch is right-click > Open)
 #   Linux    - .AppImage, .deb, .rpm
-#   Android  - experimental debug-signed .apk (sideload); a failure here never blocks a release
+#   Android  - experimental debug-signed .apk for 64-bit ARM (sideload); a failure here never
+#              blocks a release
 # A pushed tag vX.Y.Z (matching package.json's version) publishes a GitHub release with them and
 # SHA256SUMS.txt. Run by hand (Actions > Release > Run workflow) it only builds and keeps the
-# files as workflow artifacts; nothing is published.
+# files as workflow artifacts; nothing is published. Tick "android_only" to build just the APK.
 name: Release
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      android_only:
+        description: Build only the Android APK (quick check, no desktop builds)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -32,6 +38,7 @@ jobs:
 
   desktop:
     needs: check-version
+    if: ${{ !inputs.android_only }}
     permissions:
       contents: write # uploads to the draft release
     strategy:
@@ -147,7 +154,7 @@ jobs:
       - name: Toolchain
         run: |
           rustup show active-toolchain || rustup toolchain install
-          rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
+          rustup target add aarch64-linux-android
       - uses: Swatinem/rust-cache@v2
         with:
           key: android
@@ -156,8 +163,16 @@ jobs:
         run: |
           npx tauri android init --ci
           npx tauri icon public/icon.svg
+      # Debug-signed so it installs without a release keystore, but built lean: 64-bit ARM only
+      # (virtually every phone since 2017) and the Rust library optimised and stripped of debug
+      # info, which otherwise made the APK ~490 MB.
       - name: Build APK
-        run: npx tauri android build --apk --debug --ci
+        env:
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          CARGO_PROFILE_DEV_STRIP: "symbols"
+          CARGO_PROFILE_DEV_OPT_LEVEL: "s"
+          CARGO_PROFILE_DEV_INCREMENTAL: "false"
+        run: npx tauri android build --apk --debug --target aarch64 --ci
       - name: Collect APK
         run: |
           v=$(node -p "require('./package.json').version")
