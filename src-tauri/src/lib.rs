@@ -214,9 +214,16 @@ async fn save_file(
 }
 
 /// Native print dialog for the current page (window.print() is a no-op in some webviews).
+/// On Android/iOS there's no webview print API; the frontend then falls back to window.print().
 #[tauri::command]
 fn print_document(window: WebviewWindow) -> Result<(), String> {
-    window.print().map_err(|e| e.to_string())
+    #[cfg(desktop)]
+    return window.print().map_err(|e| e.to_string());
+    #[cfg(mobile)]
+    {
+        let _ = window;
+        Err("Native printing is not available on this platform".into())
+    }
 }
 
 fn queue_and_notify(app: &AppHandle, paths: Vec<PathBuf>) {
@@ -227,6 +234,7 @@ fn queue_and_notify(app: &AppHandle, paths: Vec<PathBuf>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg_attr(mobile, allow(unused_mut))]
     let mut builder = tauri::Builder::default();
 
     // A second launch (double-clicking another document) hands its files to this instance.
