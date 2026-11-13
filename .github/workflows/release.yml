@@ -81,6 +81,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          # npm, explicitly: tauri-action would pick bun from the old bun.lock.
+          tauriScript: npx tauri
           args: --target ${{ matrix.target }}
           # On a tag: attach to a draft release that the publish job finalises.
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
@@ -137,10 +139,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      # The ubuntu runner ships the Android SDK (ANDROID_HOME); only the NDK is added.
       - name: NDK
         run: |
-          sdkmanager --install "ndk;27.2.12479018"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;27.2.12479018"
           echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
       - name: Toolchain
         run: |
