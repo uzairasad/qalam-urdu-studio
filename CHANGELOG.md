@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — 2026-11-13
+
+- Android: the app now builds for Android. Native printing is desktop-only. On phones and tablets,
+  Print uses the webview's own print instead.
+- Release builds always use npm, so the leftover `bun.lock` no longer confuses the build.
+
 ## 0.1.0 — 2026-11-13
 
 First native release: the Google AI Studio PWA, now as a Rust (Tauri 2) app.
