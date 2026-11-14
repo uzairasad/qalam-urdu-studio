@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.3 — 2026-11-14
 
 - Qalam Urdu Studio is now open source under the GNU GPL v3.0 or later. The About box shows the
   license with links to the website, source code, license and third-party notices.
