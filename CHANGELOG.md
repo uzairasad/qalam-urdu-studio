@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.5 — 2026-11-15
 
 - Opens real InPage documents: `.inp` files from InPage 1.x, 2.x, 2000, XP 2004 and 2005, the
   `.B01` backups InPage keeps next to them, and text exported from InPage. The Urdu, Arabic,
