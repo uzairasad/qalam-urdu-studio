@@ -114,3 +114,14 @@ test('recognises InPage-exported text files but not ordinary text', () => {
 test('rejects files that are not InPage documents', () => {
   assert.throws(() => parseInPageFile(new TextEncoder().encode('{"pages": []}')), /not an InPage document/);
 });
+
+test('decodes Sindhi (05 prefix) and InPage’s Arabic set (07 prefix)', () => {
+  // سنڌي: س ن ڌ ي in the Sindhi set; then سڏائڻ, whose hamza code becomes ئ inside the word.
+  const sindhi = new Uint8Array([0x05, 0x9b, 0x05, 0xb0, 0x05, 0x93, 0x05, 0xad, 0x05, 0x20,
+    0x05, 0x9b, 0x05, 0x94, 0x05, 0x81, 0x05, 0xab, 0x05, 0xb1]);
+  const decoded = decodeInPageBytes(sindhi);
+  assert.equal(decoded.unreadable, 0);
+  assert.equal(normalizeInPageText(decoded.text), 'سنڌي سڏائڻ');
+  // 07 uses the Urdu codes: عربی
+  assert.equal(decodeInPageBytes(new Uint8Array([0x07, 0x98, 0x07, 0x8e, 0x07, 0x82, 0x07, 0xa4])).text, 'عربی');
+});

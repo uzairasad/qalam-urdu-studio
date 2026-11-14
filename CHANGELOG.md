@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.7 — 2026-11-15
+
+- **Phones: the title bar no longer sits under the status bar and camera cutout**, and dialogs
+  and the bottom bar keep clear of them and the gesture bar too.
+- **New app icon**: a reed pen writing a Nastaliq stroke, drawn to fit every launcher shape. The
+  old icon's text didn't show and its frame was cut off on Android.
+- **Starts with a blank page** instead of the newspaper template, with a hint on how to begin.
+  Templates are under File → New from Template (no longer repeated in the tab bar), and an
+  untouched template isn't restored at the next start.
+- **Dark theme**: follows the system, or choose under View → Theme. Pages keep their real colours.
+- Text frames wrap the same at every zoom level, so text no longer shows as overflowing at small
+  zoom (as on phones). The red reset button is gone from the title bar (Reset Workspace is still
+  in the File menu).
+- **InPage:** Sindhi text and InPage's Arabic character set (used for Arabic, Pashto and Kashmiri)
+  now come across from InPage 2000–2005 documents instead of being dropped.
+- **New .qlm format**: a compressed package (like .docx) with pictures stored as image files, so
+  documents are much smaller. Older .qlm, .qpg and .json documents still open; once saved again
+  they use the new format, which older versions of Qalam Urdu Studio can't open.
+
 ## 0.1.6 — 2026-11-15
 
 - Opens InPage 2009 and later documents (`.inp` with Unicode text).

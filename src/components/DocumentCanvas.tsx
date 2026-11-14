@@ -611,6 +611,22 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
             />
           ))}
 
+        {/* Empty page: how to start (never printed) */}
+        {displayedElements.length === 0 && (isMasterPage || masterElements.length === 0) && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none no-print p-6">
+            <div className="text-center text-slate-400 leading-relaxed" style={{ fontSize: `${Math.max(11, 14 * zoom)}px` }}>
+              <div className="font-nastaliq text-slate-500" style={{ fontSize: `${Math.max(14, 20 * zoom)}px`, lineHeight: 2.2 }} dir="rtl">
+                لکھنا شروع کرنے کے لیے ٹول باکس سے ٹیکسٹ باکس بنائیں
+              </div>
+              <div>
+                {isMasterPage
+                  ? 'Master page: what you add here appears on every page.'
+                  : 'Choose the text box tool and drag on the page to start writing.'}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Current Page Elements */}
         {displayedElements.map((elem) => (
           <ElementRenderer
@@ -856,9 +872,10 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
         const fontSizePx = te.fontSize * (96 / 72) * zoom;
         const fontStack = resolveFontStack(te.fontFamily);
         const insetPx = mmToPx(te.paddingMm ?? 1.5);
-        const padTop = Math.max(4, Math.round(fontSizePx * 0.28 + insetPx));
-        const padBottom = Math.max(5, Math.round(fontSizePx * 0.34 + insetPx));
-        const padSide = Math.max(5, Math.round(insetPx + 2 * zoom));
+        // Padding scales with zoom (minimums included), so text wraps the same at every zoom.
+        const padTop = Math.max(4 * zoom, fontSizePx * 0.28 + insetPx);
+        const padBottom = Math.max(5 * zoom, fontSizePx * 0.34 + insetPx);
+        const padSide = Math.max(5 * zoom, insetPx + 2 * zoom);
         const scaleFactor = (te.scaleX || 100) / 100;
         const pageNumStr = String(pageNumber);
         const localizedNum =

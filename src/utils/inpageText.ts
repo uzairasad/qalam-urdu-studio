@@ -2,7 +2,8 @@
  * Classic InPage text encoding (InPage 1.x, 2.x, 2000, XP 2004 and 2005; the "InPage100"
  * stream of a .inp file, and the .txt files InPage's File → Export writes).
  *
- * Every Urdu/Arabic character is two bytes, 0x04 then a code below. English text and digits
+ * Every Urdu/Arabic character is two bytes, 0x04 then a code below (0x05 for Sindhi, 0x07 for
+ * InPage's Arabic set). English text and digits
  * are plain single ASCII bytes. Paragraphs end with 0x0D (0x0D 0x0A in exported .txt).
  *
  * The code table follows umer0586/unicode-inpage-converter (GPL-3.0, like this project), checked
@@ -11,6 +12,8 @@
  * Older files store composite letters as base letter + mark (ا + ٓ for آ…); `normalizeInPageText`
  * recombines them.
  */
+
+import { INPAGE_SINDHI_TO_UNICODE } from './inpageSindhi.ts';
 
 export const INPAGE_TO_UNICODE: Readonly<Record<number, string>> = {
   0x08: '\u0655', // hamza below
@@ -136,8 +139,9 @@ export function decodeInPageBytes(bytes: Uint8Array): DecodedRun {
   let unreadable = 0;
   for (let i = 0; i < bytes.length; i++) {
     const b = bytes[i];
-    if (b === 0x04 && i + 1 < bytes.length) {
-      const ch = INPAGE_TO_UNICODE[bytes[i + 1]];
+    if ((b === 0x04 || b === 0x05 || b === 0x07) && i + 1 < bytes.length) {
+      // 04 Urdu, 05 Sindhi, 07 InPage's Arabic set (Arabic, Pashto, Kashmiri: the Urdu codes).
+      const ch = b === 0x05 ? INPAGE_SINDHI_TO_UNICODE[bytes[i + 1]] : INPAGE_TO_UNICODE[bytes[i + 1]];
       if (ch === undefined) unreadable++;
       else text += ch;
       i++;
@@ -182,6 +186,8 @@ export function normalizeInPageText(raw: string): string {
     new RegExp(`(^|[^\\u0600-\\u06FF]|[\\u06F0-\\u06F9]|${NON_JOINING}${MARK}*)\\u0626(?!${MARK}*${URDU_LETTER})`, 'g'),
     '$1\u0621'
   );
+  // Sindhi text has the plain hamza code: inside a word (between letters) it is yeh with hamza.
+  t = t.replace(new RegExp(`(?<=${URDU_LETTER}${MARK}*)\\u0621(?=${MARK}*${URDU_LETTER})`, 'g'), '\u0626');
   t = t.replace(URDU_NUMBER, reverseNumber);
   return t;
 }

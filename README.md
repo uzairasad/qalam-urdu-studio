@@ -33,7 +33,8 @@ Linux and Android, and in any modern browser.
 - **Page layout.** Multi-column text frames, picture boxes, tables, master pages, rulers, a snap
   grid and character scaling, on real paper sizes.
 - **Urdu dictionary.** Meanings, synonyms and antonyms, available offline.
-- **Open and export.** Qalam documents (`.qlm`); open Word, PDF and text files; export PDF,
+- **Open and export.** Qalam documents (`.qlm`: a compressed package with the pictures inside,
+  described in [docs/QLM-FORMAT.md](docs/QLM-FORMAT.md)); open Word, PDF and text files; export PDF,
   Word, PNG, HTML and Unicode text.
 - **Opens InPage files, layout and all.** Documents from InPage 1.x, 2.x, 2000, XP 2004,
   2005, 2009 and later (`.inp`, the `.B01` backups next to them, and InPage text exports) open
@@ -42,6 +43,8 @@ Linux and Android, and in any modern browser.
   rotation, fonts, sizes, alignment, borders, lines, boxes and pictures. **Export for InPage
   2000–2005** writes text the other way, in InPage's own encoding, for File → Import in old
   InPage.
+- **Light and dark.** Follows the system theme, or pick one under View → Theme. Pages always
+  show (and print) in their real colours.
 - **Print-ready.** Print preview and native printing at the exact physical page size.
 - **Works offline.** Nothing is loaded from the internet once the app is installed.
 - **Updates itself.** The desktop apps install signed updates in place (File → About → Check for

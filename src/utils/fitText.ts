@@ -14,9 +14,9 @@ const MM_TO_PX = 3.78; // as DocumentCanvas at 100% zoom
 function padding(fontSizePx: number, paddingMm = 1.5) {
   const inset = paddingMm * MM_TO_PX;
   return {
-    top: Math.max(4, Math.round(fontSizePx * 0.28 + inset)),
-    bottom: Math.max(5, Math.round(fontSizePx * 0.34 + inset)),
-    side: Math.max(5, Math.round(inset + 2)),
+    top: Math.max(4, fontSizePx * 0.28 + inset),
+    bottom: Math.max(5, fontSizePx * 0.34 + inset),
+    side: Math.max(5, inset + 2),
   };
 }
 

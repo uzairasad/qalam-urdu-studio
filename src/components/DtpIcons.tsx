@@ -5,34 +5,38 @@ interface IconProps {
   active?: boolean;
 }
 
-export const QalamBrandEmblem: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
-  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-    <rect x="2" y="2" width="20" height="20" rx="5" fill="currentColor" fillOpacity="0.14" />
-    {/* Traditional angled Qalam reed-pen nib */}
-    <path
-      d="M12 4.2L17.2 11.4L15.4 16.4H8.6L6.8 11.4L12 4.2Z"
-      fill="currentColor"
-      fillOpacity="0.22"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinejoin="round"
-    />
-    <path d="M12 4.6V11.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    <circle cx="12" cy="12.6" r="1.25" fill="currentColor" />
-    {/* Gold/Pen Collar */}
-    <path d="M8 18.6H16" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-    {/* Calligraphic nuqta dot */}
-    <rect
-      x="17.2"
-      y="5.2"
-      width="2.2"
-      height="2.2"
-      rx="0.4"
-      transform="rotate(45 18.3 6.3)"
-      fill="currentColor"
-    />
-  </svg>
-);
+/** The app icon (public/icon.svg), drawn inline so it works offline and in the single-file build. */
+export const QalamAppLogo: React.FC<{ className?: string }> = ({ className = 'w-6 h-6' }) => {
+  const id = React.useId().replace(/:/g, '');
+  return (
+    <svg viewBox="0 0 512 512" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id={`${id}bg`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#2563eb" />
+          <stop offset="1" stopColor="#0b2a78" />
+        </linearGradient>
+        <linearGradient id={`${id}gold`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fde68a" />
+          <stop offset="1" stopColor="#f59e0b" />
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="116" fill={`url(#${id}bg)`} />
+      <g transform="translate(256 256) scale(0.86) translate(-287 -244)">
+        <path
+          d="M352 318 C 340 380, 262 410, 186 396 C 146 389, 116 368, 104 342 C 126 356, 158 366, 194 368 C 258 372, 310 352, 330 312 Z"
+          fill={`url(#${id}gold)`}
+        />
+        <rect x="178" y="288" width="36" height="36" rx="5" transform="rotate(45 196 306)" fill={`url(#${id}gold)`} />
+        <g transform="translate(86 26) rotate(34 256 290) translate(0 -8)">
+          <path d="M224 88 L288 88 Q298 88 298 98 L298 212 L256 294 L214 212 L214 98 Q214 88 224 88 Z" fill="#f4f7ff" />
+          <path d="M214 194 L298 194 L298 212 L214 212 Z" fill={`url(#${id}gold)`} />
+          <path d="M256 294 L256 238" stroke="#0b2a78" strokeWidth="7" strokeLinecap="round" />
+          <circle cx="256" cy="234" r="9" fill="#0b2a78" />
+        </g>
+      </g>
+    </svg>
+  );
+};
 
 /* =========================================================
    LEFT TOOLBOX ICONS (24x24 precision pixel-aligned DTP vectors)

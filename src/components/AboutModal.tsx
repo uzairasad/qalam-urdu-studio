@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { X, Info } from 'lucide-react';
-import { QalamBrandEmblem } from './DtpIcons';
+import { QalamAppLogo } from './DtpIcons';
 import { APP_AUTHOR, APP_VERSION, type ProjectLink } from '../appInfo';
 import { isNativeApp, openProjectLink } from '../platform/native';
 import { UpdatesSection, type Updates } from './Updates';
@@ -29,7 +29,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, updates
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[1px] p-4 short:p-2 select-none">
+    <div className="fixed inset-0 z-50 safe-overlay flex items-center justify-center bg-black/45 backdrop-blur-[1px] p-4 short:p-2 select-none">
       <div
         role="dialog"
         aria-modal="true"
@@ -56,10 +56,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, updates
         {/* Content (scrolls when the window is short, e.g. at 150-200% display scaling) */}
         <div className="min-h-0 overflow-y-auto">
         <div className="p-4 short:p-3 flex gap-4 text-xs">
-          <div className="w-16 h-16 flex flex-col items-center justify-center gap-0.5 text-white shadow-md shrink-0 overflow-hidden bg-gradient-to-br from-blue-700 to-indigo-900 rounded-xl">
-            <QalamBrandEmblem className="w-8 h-8 text-amber-300" />
-            <span className="text-[9px] font-mono tracking-wider leading-none">Qalam</span>
-          </div>
+          <QalamAppLogo className="w-16 h-16 shrink-0 drop-shadow-md" />
 
           <div className="space-y-2">
             <div>

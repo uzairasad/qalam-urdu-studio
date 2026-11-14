@@ -17,6 +17,31 @@ export const isNativeApp = (): boolean =>
 export const isMobile = (): boolean =>
   typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
+/**
+ * The Android app is drawn edge to edge (behind the status bar and camera cutout, and the gesture
+ * bar). Recent WebViews report that space as env(safe-area-inset-*); older ones report 0, which
+ * put the title bar under the cutout. When the page fills the whole screen but no inset is
+ * reported, reserve typical status bar and gesture bar heights instead.
+ */
+export function watchSafeArea(): void {
+  if (!isNativeApp() || !/Android/i.test(navigator.userAgent)) return;
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)';
+  document.body.appendChild(probe);
+  const update = () => {
+    const cs = getComputedStyle(probe);
+    const reported = parseFloat(cs.paddingTop) > 0 || parseFloat(cs.paddingBottom) > 0;
+    // Edge to edge: the page is as tall as the screen (within a few pixels of rounding).
+    const fullScreen = window.innerHeight >= screen.height - 4;
+    const root = document.documentElement.style;
+    root.setProperty('--safe-top-fallback', !reported && fullScreen ? '32px' : '0px');
+    root.setProperty('--safe-bottom-fallback', !reported && fullScreen ? '20px' : '0px');
+  };
+  update();
+  window.addEventListener('resize', update);
+}
+
 type SaveData = Blob | string | Uint8Array | ArrayBuffer;
 
 async function toBytes(data: SaveData): Promise<Uint8Array> {

@@ -1,60 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Qalam Urdu Studio: a reed pen (qalam) writing a Nastaliq stroke. Shapes only (no text or
+       filters), with everything inside the central circle so launcher masks never cut it. -->
   <defs>
-    <linearGradient id="qalam-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0d2f85" />
-      <stop offset="50%" stop-color="#0b57d0" />
-      <stop offset="100%" stop-color="#072264" />
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#0b2a78"/>
     </linearGradient>
-    <linearGradient id="qalam-gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fde047" />
-      <stop offset="55%" stop-color="#f59e0b" />
-      <stop offset="100%" stop-color="#b45309" />
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#f59e0b"/>
     </linearGradient>
-    <linearGradient id="nib-ink" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1d4ed8" />
-      <stop offset="100%" stop-color="#0a2463" />
+    <linearGradient id="nib" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dbe6ff"/>
     </linearGradient>
-    <filter id="card-shadow" x="-15%" y="-15%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#020b24" flood-opacity="0.45" />
-    </filter>
   </defs>
-
-  <!-- Rounded Studio App Tile -->
-  <rect width="512" height="512" rx="112" fill="url(#qalam-bg)" />
-
-  <!-- Decorative Gold & Ivory Calligraphic Frame -->
-  <rect x="34" y="34" width="444" height="444" rx="84" fill="none" stroke="url(#qalam-gold)" stroke-width="7" opacity="0.9" />
-  <rect x="48" y="48" width="416" height="416" rx="72" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.35" />
-
-  <!-- Central Ivory Emblem Medallion -->
-  <g transform="translate(256, 224) rotate(45)">
-    <rect x="-118" y="-118" width="236" height="236" rx="34" fill="#ffffff" filter="url(#card-shadow)" />
-    <rect x="-106" y="-106" width="212" height="212" rx="26" fill="none" stroke="#1d4ed8" stroke-width="4" opacity="0.22" />
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <g transform="translate(256 256) scale(0.86) translate(-287 -244)">
+  <!-- Ink stroke: the sweeping bowl of a Nastaliq letter, written right to left -->
+  <path d="M352 318 C 340 380, 262 410, 186 396 C 146 389, 116 368, 104 342
+           C 126 356, 158 366, 194 368 C 258 372, 310 352, 330 312 Z" fill="url(#gold)"/>
+  <!-- Nuqta (the diamond dot) -->
+  <rect x="178" y="288" width="36" height="36" rx="5" transform="rotate(45 196 306)" fill="url(#gold)"/>
+  <!-- Reed pen, its nib at the start of the stroke -->
+  <g transform="translate(86 26) rotate(34 256 290) translate(0 -8)">
+    <path d="M224 88 L288 88 Q298 88 298 98 L298 212 L256 294 L214 212 L214 98 Q214 88 224 88 Z" fill="url(#nib)"/>
+    <path d="M214 194 L298 194 L298 212 L214 212 Z" fill="url(#gold)"/>
+    <path d="M256 294 L256 238" stroke="#0b2a78" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="256" cy="234" r="9" fill="#0b2a78"/>
   </g>
-
-  <!-- Qalam Reed Pen Nib (Traditional Angled Cut Nib + Ink Slit + Gold Collar) -->
-  <g transform="translate(256, 218)">
-    <!-- Gold Pen Collar / Ring -->
-    <path d="M-34 48 L34 48 L42 66 L-42 66 Z" fill="url(#qalam-gold)" />
-    <!-- Main Pen Nib Body with Oblique Qalam Tip -->
-    <path d="M0 -84 L48 -8 L32 48 L-32 48 L-48 -8 Z" fill="url(#nib-ink)" />
-    <!-- Subtle Specular Highlight on Right Wing of Nib -->
-    <path d="M0 -84 L48 -8 L32 48 L0 48 Z" fill="#ffffff" opacity="0.1" />
-    <!-- Center Slit & Breather Hole -->
-    <line x1="0" y1="-84" x2="0" y2="2" stroke="#ffffff" stroke-width="6" stroke-linecap="round" />
-    <circle cx="0" cy="8" r="11" fill="#ffffff" />
-    <circle cx="0" cy="8" r="5" fill="#f59e0b" />
-    <!-- Small Urdu Calligraphy Dot / Nuqta Accent -->
-    <rect x="50" y="-56" width="16" height="16" rx="3" transform="rotate(45 58 -48)" fill="url(#qalam-gold)" />
   </g>
-
-  <!-- Urdu "قلم" Calligraphic Mark -->
-  <text x="256" y="346" font-family="'Noto Nastaliq Urdu', 'Gulzar', 'Amiri', serif" font-size="60" font-weight="bold" fill="#fde047" text-anchor="middle" dominant-baseline="middle">
-    قلم
-  </text>
-
-  <!-- Bottom Brand Label -->
-  <text x="256" y="438" font-family="Segoe UI, Plus Jakarta Sans, Tahoma, sans-serif" font-size="27" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3.5">
-    QALAM STUDIO
-  </text>
 </svg>

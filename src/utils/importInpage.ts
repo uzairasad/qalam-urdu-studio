@@ -29,7 +29,7 @@ function isTextRecord(bytes: Uint8Array, start: number, length: number): boolean
   const end = start + length - 1; // the 0x0D
   for (let i = start; i < end; i++) {
     const b = bytes[i];
-    if (b === 0x04) {
+    if (b === 0x04 || b === 0x05 || b === 0x07) {
       if (i + 1 >= end) return false;
       i++;
     } else if (!((b >= 0x20 && b < 0x7f) || b === 0x09)) {

@@ -16,7 +16,7 @@ A `.inp` (or `.B01` backup) is an OLE compound file with:
 
 | Stream | Written by | Text encoding |
 | --- | --- | --- |
-| `InPage100` | InPage 1.x, 2.x, 2000, XP 2004, 2005 | InPage's own: `04 xx` per Urdu/Arabic letter, ASCII for English |
+| `InPage100` | InPage 1.x, 2.x, 2000, XP 2004, 2005 | InPage's own: `04 xx` per Urdu letter (`05 xx` Sindhi, `07 xx` the Arabic set used for Arabic, Pashto, Kashmiri: Urdu codes), ASCII for English |
 | `InPage300` | InPage 2009 and later | UTF-16LE |
 | `DocumentInfo` | all | title, author |
 | `PPicts…` | all, one per picture | Windows DIB without a file header |
@@ -118,5 +118,5 @@ heights also give each paragraph its exact position inside the frame.
 ## Not read yet
 
 Per-word formatting (Qalam frames have one style each, so each block takes the style of most of
-its text), table cell geometry, kashida justification, text wrap around shapes, and the Sindhi
-(`05 xx`) and Pashto (`07 xx`) character sets of InPage100.
+its text), table cell geometry (rows come in with their cells separated by tabs), kashida
+justification, picture cropping, and text wrap around shapes.

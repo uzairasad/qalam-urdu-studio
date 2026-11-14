@@ -70,7 +70,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 backdrop-blur-[2px] select-none no-print font-modern"
+      className="fixed inset-0 z-50 safe-overlay keep-colors flex flex-col bg-slate-900/80 backdrop-blur-[2px] select-none no-print font-modern"
       dir="ltr"
     >
       {/* Top Preview Control Bar */}

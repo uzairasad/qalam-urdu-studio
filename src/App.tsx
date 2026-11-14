@@ -40,13 +40,16 @@ import {
   PageSetup,
   KeyboardLayout,
 } from './types/inpage';
-import { TEMPLATES } from './utils/templates';
+import { TEMPLATES, blankProject, isUntouchedTemplate } from './utils/templates';
 import { URDU_NUMERALS, stripUrduDiacritics } from './utils/phoneticKeyboard';
 import { resolveFontStack } from './utils/fonts';
 import { exportPageToPng } from './utils/exportPng';
 import { exportForInPage } from './utils/exportInpage';
 import { inPageBytesToProject, InPageFormatError, looksLikeInPageText } from './utils/importInpage';
 import { fitTextToFrames } from './utils/fitText';
+import { useTheme } from './theme';
+import { decodeQlm, encodeQlm, QlmFormatError } from './utils/qlmFormat';
+import { APP_VERSION } from './appInfo';
 import { isOleFile } from './utils/ole';
 import { exportProjectToPdf } from './utils/exportPdf';
 import { exportProjectToDocx } from './utils/exportDocx';
@@ -82,7 +85,12 @@ function loadInitialTabsState(): { tabs: DocumentTab[]; activeTabId: string } {
         const validTabs: DocumentTab[] = parsed.tabs
           .filter(
             (t: Partial<DocumentTab>) =>
-              t && t.project && Array.isArray(t.project.pages) && t.project.pages.length > 0
+              t &&
+              t.project &&
+              Array.isArray(t.project.pages) &&
+              t.project.pages.length > 0 &&
+              // A template opened but never changed isn't work to restore.
+              !isUntouchedTemplate(t.project)
           )
           .map((t: Partial<DocumentTab>) => {
             const proj = t.project as DocumentProject;
@@ -111,7 +119,7 @@ function loadInitialTabsState(): { tabs: DocumentTab[]; activeTabId: string } {
       localStorage.getItem('inpage_autosave_v4');
     if (legacySaved) {
       const parsed = JSON.parse(legacySaved);
-      if (parsed && Array.isArray(parsed.pages) && parsed.pages.length > 0 && parsed.pageSetup) {
+      if (parsed && Array.isArray(parsed.pages) && parsed.pages.length > 0 && parsed.pageSetup && !isUntouchedTemplate(parsed)) {
         const tab = createTabFromProject(parsed, false);
         return { tabs: [tab], activeTabId: tab.id };
       }
@@ -119,7 +127,7 @@ function loadInitialTabsState(): { tabs: DocumentTab[]; activeTabId: string } {
   } catch {
     // Fallback to default template on storage errors
   }
-  const defaultTab = createTabFromProject(TEMPLATES[0].getProject(), false);
+  const defaultTab = createTabFromProject(blankProject(), false);
   return { tabs: [defaultTab], activeTabId: defaultTab.id };
 }
 
@@ -129,6 +137,7 @@ export default function App() {
     initialStateRef.current = loadInitialTabsState();
   }
 
+  const [theme, setTheme] = useTheme();
   const [tabs, setTabs] = useState<DocumentTab[]>(initialStateRef.current.tabs);
   const [activeTabId, setActiveTabId] = useState<string>(initialStateRef.current.activeTabId);
 
@@ -555,8 +564,7 @@ export default function App() {
   };
 
   const handleNewBlankTab = () => {
-    const blankTemplate = TEMPLATES.find((t) => t.id === 'blank') || TEMPLATES[TEMPLATES.length - 1];
-    const baseProj = blankTemplate.getProject();
+    const baseProj = blankProject();
     const blankCount = tabs.filter((t) => t.project.fileName.startsWith('Untitled')).length + 1;
     const fileName = `Untitled_${blankCount}.qlm`;
     openProjectInNewTab(
@@ -577,8 +585,7 @@ export default function App() {
     setContextMenu(null);
     setTabs((prev) => {
       if (prev.length <= 1) {
-        const blank =
-          (TEMPLATES.find((t) => t.id === 'blank') || TEMPLATES[TEMPLATES.length - 1]).getProject();
+        const blank = blankProject();
         const freshTab = createTabFromProject(
           { ...blank, title: 'Untitled 1', fileName: 'Untitled_1.qlm' },
           false
@@ -760,7 +767,7 @@ export default function App() {
     const rawName = project.fileName || 'Qalam_Document.qlm';
     const outName = rawName.replace(/\.qpg$/i, '.qlm');
     const payload = outName === project.fileName ? project : { ...project, fileName: outName };
-    const saved = await saveFile(outName, JSON.stringify(payload, null, 2), 'application/json');
+    const saved = await saveFile(outName, encodeQlm(payload, `Qalam Urdu Studio ${APP_VERSION}`));
     if (!saved) return;
     setIsModified(false);
     showToast(`Saved ${saved}`);
@@ -1103,32 +1110,19 @@ export default function App() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const loaded = JSON.parse(event.target?.result as string);
-        if (loaded.pages && loaded.pageSetup) {
-          openProjectInNewTab(loaded, `Opened ${loaded.fileName || file.name} in new tab`);
-        } else {
-          setDialog({
-            isOpen: true,
-            type: 'warning',
-            title: 'Open Document',
-            message: 'Invalid Qalam Studio document file format.',
-            onConfirm: () => {},
-          });
-        }
-      } catch {
-        setDialog({
-          isOpen: true,
-          type: 'warning',
-          title: 'Open Document',
-          message: 'Failed to parse document file.',
-          onConfirm: () => {},
-        });
-      }
-    };
-    reader.readAsText(file);
+    // Qalam documents: .qlm packages, and older JSON saves (.qlm, .qpg, .json).
+    try {
+      const loaded = decodeQlm(new Uint8Array(await file.arrayBuffer()));
+      openProjectInNewTab(loaded, `Opened ${loaded.fileName || file.name} in new tab`);
+    } catch (err) {
+      setDialog({
+        isOpen: true,
+        type: 'warning',
+        title: 'Open Document',
+        message: err instanceof QlmFormatError ? err.message : 'Could not open this document.',
+        onConfirm: () => {},
+      });
+    }
   };
 
   // Desktop app: documents opened from the OS (double-click, Open with, second launch)
@@ -1433,7 +1427,7 @@ export default function App() {
   return (
     <>
       <div
-        className="w-full h-dvh flex flex-col overflow-hidden select-none text-slate-800 bg-[#eef1f6] font-modern no-print"
+        className="w-full h-dvh flex flex-col pl-[var(--safe-left)] pr-[var(--safe-right)] overflow-hidden select-none text-slate-800 bg-[#eef1f6] font-modern no-print"
         dir="ltr"
       >
         {/* Hidden File Inputs for .qlm / .inp / .docx / .pdf / .txt upload */}
@@ -1483,7 +1477,6 @@ export default function App() {
           onOpenDictionary={() => setIsDictionaryOpen(true)}
           language={language}
           onToggleLanguage={handleToggleLanguage}
-          onCloseApp={handleExitApp}
           onOpenDownload={() => setIsDownloadOpen(true)}
           update={foundUpdate ? { version: foundUpdate.version } : null}
           onOpenUpdate={() => setIsAboutOpen(true)}
@@ -1491,6 +1484,8 @@ export default function App() {
 
       {/* 2. Microsoft Word-Style Tabbed Ribbon */}
       <RibbonToolbar
+          theme={theme}
+          onSetTheme={setTheme}
         selectedElement={selectedElement}
         onUpdateElement={(updated) =>
           selectedElementId && handleUpdateElement(selectedElementId, updated)
@@ -1565,7 +1560,6 @@ export default function App() {
         onSelectTab={handleSelectTab}
         onCloseTab={handleCloseTab}
         onNewBlankTab={handleNewBlankTab}
-        onNewTemplateTab={handleNewTemplateTab}
       />
 
       {/* 4. Main Desktop / Mobile Workspace (Toolbox + Rulers + Canvas) */}
@@ -1653,7 +1647,7 @@ export default function App() {
           <div
             role="status"
             aria-live="polite"
-            className="fixed bottom-24 md:bottom-11 right-3 md:right-4 z-40 px-3 py-2 bg-slate-900/95 text-white text-xs font-medium rounded-md shadow-lg border border-slate-700 flex items-center gap-2 no-print animate-toast-in max-w-[calc(100vw-24px)]"
+            className="keep-colors fixed bottom-24 md:bottom-11 right-3 md:right-4 z-40 px-3 py-2 bg-slate-900/95 text-white text-xs font-medium rounded-md shadow-lg border border-slate-700 flex items-center gap-2 no-print animate-toast-in max-w-[calc(100vw-24px)]"
           >
             <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="line-clamp-2">{toastMessage}</span>

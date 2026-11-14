@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Plus, X, FileText, ChevronDown } from 'lucide-react';
+import React from 'react';
+import { Plus, X, FileText } from 'lucide-react';
 import { DocumentTab } from '../types/inpage';
-import { TEMPLATES } from '../utils/templates';
 
 interface DocumentTabsProps {
   tabs: DocumentTab[];
@@ -9,7 +8,6 @@ interface DocumentTabsProps {
   onSelectTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
   onNewBlankTab: () => void;
-  onNewTemplateTab: (templateId: string) => void;
 }
 
 export const DocumentTabs: React.FC<DocumentTabsProps> = ({
@@ -18,21 +16,7 @@ export const DocumentTabs: React.FC<DocumentTabsProps> = ({
   onSelectTab,
   onCloseTab,
   onNewBlankTab,
-  onNewTemplateTab,
 }) => {
-  const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setTemplateMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
-  }, []);
-
   return (
     <div
       className="h-8 short:h-7 px-2 bg-slate-100 border-b border-slate-200 flex items-end gap-1 select-none shrink-0 relative z-20 no-print font-modern"
@@ -97,54 +81,17 @@ export const DocumentTabs: React.FC<DocumentTabsProps> = ({
         })}
       </div>
 
-      {/* New Tab & Template Tab Controls (kept outside overflow-x-auto so dropdown is never clipped) */}
-      <div className="flex items-center gap-0.5 pb-1 pl-1 shrink-0" ref={menuRef}>
+      {/* New tab (templates are under File → New from Template) */}
+      <div className="flex items-center pb-1 pl-1 shrink-0">
         <button
           type="button"
           onClick={onNewBlankTab}
-          title="Open New Blank Document Tab (Ctrl+N)"
-          aria-label="New Document Tab"
+          title="New document (Ctrl+N)"
+          aria-label="New document"
           className="w-7 h-6 sm:w-6 flex items-center justify-center rounded-md text-slate-600 hover:bg-white hover:text-blue-600 hover:border hover:border-slate-300 transition-colors touch-manipulation"
         >
           <Plus className="w-3.5 h-3.5" />
         </button>
-
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setTemplateMenuOpen((prev) => !prev)}
-            aria-expanded={templateMenuOpen}
-            title="New Document Tab from Template"
-            className="h-6 px-1.5 flex items-center gap-0.5 rounded-md text-[10px] font-medium text-slate-600 hover:bg-white hover:text-slate-900 hover:border hover:border-slate-300 transition-colors whitespace-nowrap touch-manipulation"
-          >
-            <span className="hidden xs:inline sm:inline">Templates</span>
-            <ChevronDown className="w-3 h-3" />
-          </button>
-
-          {templateMenuOpen && (
-            <div className="absolute right-0 sm:left-0 sm:right-auto top-full mt-1 w-60 sm:w-64 max-w-[calc(100vw-16px)] bg-white border border-slate-200 rounded-lg shadow-xl p-1 z-50">
-              <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400">
-                Open Template in New Tab
-              </div>
-              {TEMPLATES.map((tpl) => (
-                <button
-                  key={tpl.id}
-                  type="button"
-                  onClick={() => {
-                    setTemplateMenuOpen(false);
-                    onNewTemplateTab(tpl.id);
-                  }}
-                  className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-blue-600 hover:text-white group transition-colors"
-                >
-                  <div className="text-xs font-semibold">{tpl.name}</div>
-                  <div className="text-[11px] font-arabic-sans text-slate-500 group-hover:text-blue-100 leading-normal">
-                    {tpl.nameUrdu}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       <span className="hidden md:inline ml-auto text-[10px] text-slate-400 font-mono tabular-nums pb-1.5 pr-1 whitespace-nowrap shrink-0">

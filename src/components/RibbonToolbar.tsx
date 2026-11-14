@@ -55,6 +55,9 @@ import {
   LayoutTemplate,
   Languages,
   Square,
+  Monitor,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import {
   DocElement,
@@ -68,6 +71,7 @@ import {
 } from '../types/inpage';
 import { URDU_FONT_OPTIONS } from '../utils/fonts';
 import { TEMPLATES } from '../utils/templates';
+import type { ThemeChoice } from '../theme';
 import {
   CalligraphyNibIcon,
   TransparentSwatchIcon,
@@ -106,6 +110,8 @@ import {
 export type RibbonTabId = 'home' | 'insert' | 'layout' | 'urdu' | 'view' | 'context';
 
 interface RibbonToolbarProps {
+  theme: ThemeChoice;
+  onSetTheme: (theme: ThemeChoice) => void;
   selectedElement: DocElement | null;
   onUpdateElement: (updated: Partial<DocElement>) => void;
   pageSetup: PageSetup;
@@ -173,6 +179,8 @@ interface RibbonToolbarProps {
 }
 
 export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
+  theme,
+  onSetTheme,
   selectedElement,
   onUpdateElement,
   pageSetup,
@@ -1936,6 +1944,32 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                     <Ruler className="w-3.5 h-3.5 text-amber-600" />
                     <span>Rulers</span>
                   </button>
+                </div>
+              )}
+
+              {groupDivider}
+
+              {renderGroup(
+                'Theme',
+                <div className="flex items-center gap-1">
+                  {(
+                    [
+                      ['system', 'System', <Monitor key="s" className="w-3.5 h-3.5 text-slate-500" />],
+                      ['light', 'Light', <Sun key="l" className="w-3.5 h-3.5 text-amber-500" />],
+                      ['dark', 'Dark', <Moon key="d" className="w-3.5 h-3.5 text-indigo-500" />],
+                    ] as const
+                  ).map(([value, label, icon]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => onSetTheme(value)}
+                      aria-pressed={theme === value}
+                      className={ribbonBtnClass(theme === value)}
+                    >
+                      {icon}
+                      <span>{label}</span>
+                    </button>
+                  ))}
                 </div>
               )}
 

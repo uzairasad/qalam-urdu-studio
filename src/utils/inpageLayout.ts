@@ -201,7 +201,7 @@ export function decodeRange(text: InPageText, from: number, to: number, raw = fa
       unreadable += d.unreadable;
     };
     for (let i = 0; i < bytes.length; i++) {
-      if (bytes[i] === 0x04) i++;
+      if (bytes[i] === 0x04 || bytes[i] === 0x05 || bytes[i] === 0x07) i++;
       else if (bytes[i] === 0x02 || bytes[i] === 0x0b || bytes[i] === 0x0c) {
         flush(i);
         out += bytes[i] === 0x02 ? '{{PAGE}}' : '\n';
@@ -381,8 +381,8 @@ export function buildLayout(
     if (options.fitBox) {
       // The canvas pads frame text; widen the box by that padding so the text sits where it was.
       const px = fontSize * (96 / 72);
-      const top = Math.max(4, Math.round(px * 0.28)) / 3.78;
-      const bottom = Math.max(5, Math.round(px * 0.34)) / 3.78;
+      const top = Math.max(4, px * 0.28) / 3.78;
+      const bottom = Math.max(5, px * 0.34) / 3.78;
       const side = 5 / 3.78;
       x -= side;
       width += 2 * side;

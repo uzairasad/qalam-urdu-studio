@@ -218,7 +218,7 @@ export const PrintablePageView: React.FC<PrintablePageViewProps> = ({
   return (
     <div
       dir="ltr"
-      className={`bg-white relative overflow-hidden ${className}`}
+      className={`bg-white relative overflow-hidden print-page-view ${className}`}
       style={{
         width: `${pageSetup.widthMm}mm`,
         height: `${pageSetup.heightMm}mm`,

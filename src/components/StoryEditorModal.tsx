@@ -70,7 +70,7 @@ export const StoryEditorModal: React.FC<StoryEditorModalProps> = ({
   const categories = Array.from(new Set(URDU_FONT_OPTIONS.map((f) => f.category)));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[1px] p-2 sm:p-4 select-none">
+    <div className="fixed inset-0 z-50 safe-overlay flex items-center justify-center bg-black/45 backdrop-blur-[1px] p-2 sm:p-4 select-none">
       <div
         className="max-w-3xl w-full h-[90dvh] md:h-[80vh] flex flex-col text-slate-800 shadow-2xl bg-white border border-slate-200 rounded-xl overflow-hidden font-modern"
         dir="ltr"

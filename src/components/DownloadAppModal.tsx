@@ -58,7 +58,7 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
     'modern-btn px-3 py-1.5 font-semibold text-slate-800 flex items-center gap-1.5 text-xs';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[1px] p-4 select-none no-print">
+    <div className="fixed inset-0 z-50 safe-overlay flex items-center justify-center bg-black/45 backdrop-blur-[1px] p-4 select-none no-print">
       <div
         className="max-w-xl w-full text-slate-800 shadow-2xl bg-white border border-slate-200 rounded-xl overflow-hidden font-modern"
         dir="ltr"

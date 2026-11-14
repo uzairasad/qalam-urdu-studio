@@ -1,7 +1,36 @@
-import { DocumentProject } from '../types/inpage';
-import { SAMPLE_ASSEMBLY_SVG } from './sampleImages';
+import type { DocumentProject } from '../types/inpage.ts';
+import { SAMPLE_ASSEMBLY_SVG } from './sampleImages.ts';
 
 export const TEMPLATES: { id: string; name: string; nameUrdu: string; description: string; getProject: () => DocumentProject }[] = [
+  {
+    id: 'blank',
+    name: 'Blank Document',
+    nameUrdu: 'خالی نیا صفحہ (A4 پورٹریٹ)',
+    description: 'An empty A4 page.',
+    getProject: () => ({
+      version: '1.0',
+      title: 'Untitled 1',
+      fileName: 'Untitled_1.qlm',
+      pageSetup: {
+        paperSize: 'A4',
+        widthMm: 210,
+        heightMm: 297,
+        orientation: 'portrait',
+        margins: { top: 15, bottom: 15, left: 15, right: 15 },
+        columns: 1,
+        columnGutter: 5,
+        direction: 'rtl',
+      },
+      masterElements: [],
+      pages: [
+        {
+          id: 'page-1',
+          pageNumber: 1,
+          elements: [],
+        },
+      ],
+    }),
+  },
   {
     id: 'newspaper',
     name: 'Urdu Daily Newspaper',
@@ -613,56 +642,16 @@ export const TEMPLATES: { id: string; name: string; nameUrdu: string; descriptio
       ],
     }),
   },
-  {
-    id: 'blank',
-    name: 'Blank Document',
-    nameUrdu: 'خالی نیا صفحہ (A4 پورٹریٹ)',
-    description: 'Clean blank A4 canvas ready for creating new articles, books, posters, or flyers.',
-    getProject: () => ({
-      version: '1.0',
-      title: 'Untitled-1',
-      fileName: 'Untitled-1.qlm',
-      pageSetup: {
-        paperSize: 'A4',
-        widthMm: 210,
-        heightMm: 297,
-        orientation: 'portrait',
-        margins: { top: 15, bottom: 15, left: 15, right: 15 },
-        columns: 1,
-        columnGutter: 5,
-        direction: 'rtl',
-      },
-      masterElements: [],
-      pages: [
-        {
-          id: 'page-1',
-          pageNumber: 1,
-          elements: [
-            {
-              id: 'elem-init-text',
-              type: 'text',
-              x: 20,
-              y: 25,
-              width: 170,
-              height: 65,
-              text: 'یہاں اپنا اردو مضمون یا متن تحریر کیجئے۔ آپ کی بورڈ سے بلا جھجھک فونیٹک، مونوٹائپ یا مقتدرہ اردو ٹائپ کر سکتے ہیں یا ٹول باکس سے نئے باکس شامل کر سکتے ہیں۔',
-              fontFamily: 'Noto Nastaliq Urdu',
-              fontSize: 13.5,
-              lineHeight: 1.95,
-              letterSpacing: 0,
-              color: '#111827',
-              bold: false,
-              italic: false,
-              underline: false,
-              align: 'right',
-              direction: 'rtl',
-              borderColor: '#cbd5e1',
-              borderWidth: 0.5,
-              borderStyle: 'solid',
-            },
-          ],
-        },
-      ],
-    }),
-  },
+
 ];
+
+/** A new, empty A4 document. */
+export function blankProject(): DocumentProject {
+  return (TEMPLATES.find((t) => t.id === 'blank') ?? TEMPLATES[TEMPLATES.length - 1]).getProject();
+}
+
+/** True for a document that is one of the templates, untouched (so not worth restoring). */
+export function isUntouchedTemplate(project: DocumentProject): boolean {
+  const pages = JSON.stringify(project.pages);
+  return TEMPLATES.some((t) => t.id !== 'blank' && JSON.stringify(t.getProject().pages) === pages);
+}

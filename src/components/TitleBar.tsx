@@ -17,7 +17,7 @@ import {
   Eye,
   RefreshCw,
 } from 'lucide-react';
-import { QalamBrandEmblem } from './DtpIcons';
+import { QalamAppLogo } from './DtpIcons';
 
 interface TitleBarProps {
   fileName: string;
@@ -35,7 +35,6 @@ interface TitleBarProps {
   onOpenDictionary: () => void;
   language: 'urdu' | 'english';
   onToggleLanguage: () => void;
-  onCloseApp: () => void;
   onOpenDownload: () => void;
   /** Set when a newer version was found: shows an "Update" button that opens the About box. */
   update?: { version: string | null } | null;
@@ -58,7 +57,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onOpenDictionary,
   language,
   onToggleLanguage,
-  onCloseApp,
   onOpenDownload,
   update,
   onOpenUpdate,
@@ -88,15 +86,13 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
   return (
     <header
-      className="h-11 md:h-10 px-2 md:px-2.5 grid grid-cols-[auto_minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 md:gap-2 select-none no-print shrink-0 bg-slate-900 text-slate-100 border-b border-slate-800 font-modern text-xs"
+      className="keep-colors box-content pt-[var(--safe-top)] h-11 md:h-10 px-2 md:px-2.5 grid grid-cols-[auto_minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 md:gap-2 select-none no-print shrink-0 bg-slate-900 text-slate-100 border-b border-slate-800 font-modern text-xs"
       dir="ltr"
     >
       {/* Left Zone: Brand + Quick Access Toolbar */}
       <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-          <div className="w-6 h-6 flex items-center justify-center shrink-0 overflow-hidden bg-blue-600 text-white rounded-md shadow-xs">
-            <QalamBrandEmblem className="w-5 h-5" />
-          </div>
+          <QalamAppLogo className="w-6 h-6 shrink-0" />
           <span className="font-semibold tracking-tight whitespace-nowrap text-white sm:hidden">
             Qalam
           </span>
@@ -298,15 +294,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           className="hidden sm:flex w-7 h-7 hover:bg-slate-800 text-slate-300 hover:text-white items-center justify-center rounded transition-colors shrink-0"
         >
           {isFullscreen ? <Minus className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-        </button>
-        <button
-          type="button"
-          onClick={onCloseApp}
-          title="Reset / Reload Workspace"
-          aria-label="Reset Workspace"
-          className="w-7 h-7 hover:bg-red-600 text-slate-300 hover:text-white flex items-center justify-center rounded transition-colors shrink-0 touch-manipulation"
-        >
-          <X className="w-3.5 h-3.5" />
         </button>
       </div>
     </header>
