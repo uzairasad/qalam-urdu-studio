@@ -8,6 +8,9 @@ edition = "2021"
 rust-version = "1.80"
 authors = ["Uzair Asad"]
 publish = false
+license = "GPL-3.0-or-later"
+homepage = "https://uzairasad.github.io/qalam-urdu-studio/"
+repository = "https://github.com/uzairasad/qalam-urdu-studio"
 
 [profile.release]
 # Small, fast desktop binaries.

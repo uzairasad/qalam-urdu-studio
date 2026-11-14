@@ -8,6 +8,7 @@
  */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { PROJECT_LINKS, type ProjectLink } from '../appInfo';
 
 export const isNativeApp = (): boolean =>
   typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -121,4 +122,13 @@ export function onFilesOpenedByOS(onFile: (file: File) => void): () => void {
     disposed = true;
     unlisten?.();
   };
+}
+
+/** Opens the project website, source code, license or notices in the system browser. */
+export async function openProjectLink(link: ProjectLink): Promise<void> {
+  if (isNativeApp()) {
+    await invoke('open_project_link', { link });
+  } else {
+    window.open(PROJECT_LINKS[link], '_blank', 'noopener,noreferrer');
+  }
 }

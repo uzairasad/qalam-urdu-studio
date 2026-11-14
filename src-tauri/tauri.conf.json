@@ -70,6 +70,9 @@
     "macOS": {
       "minimumSystemVersion": "10.15"
     },
-    "publisher": "Uzair Asad"
+    "publisher": "Uzair Asad",
+    "license": "GPL-3.0-or-later",
+    "licenseFile": "../LICENSE",
+    "homepage": "https://uzairasad.github.io/qalam-urdu-studio/"
   }
 }

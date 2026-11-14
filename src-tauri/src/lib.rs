@@ -19,12 +19,35 @@ use tauri::{
     AppHandle, Emitter, Manager, State, WebviewWindow,
 };
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_opener::OpenerExt;
 
 /// Event the frontend listens to; it then calls `take_pending_files`.
 const OPEN_FILES_EVENT: &str = "qalam://open-files";
 
 /// Files the editor can open (see `handleOpenFile` in `src/App.tsx`).
 const OPENABLE_EXTENSIONS: &[&str] = &["qlm", "qpg", "inp", "docx", "pdf", "txt", "json"];
+
+/// The only web pages the app opens in the system browser (About box links). The webview has
+/// no general "open URL" permission; it asks for one of these by name.
+const PROJECT_LINKS: &[(&str, &str)] = &[
+    ("website", "https://uzairasad.github.io/qalam-urdu-studio/"),
+    ("source", "https://github.com/uzairasad/qalam-urdu-studio"),
+    (
+        "license",
+        "https://github.com/uzairasad/qalam-urdu-studio/blob/main/LICENSE",
+    ),
+    (
+        "notices",
+        "https://github.com/uzairasad/qalam-urdu-studio/blob/main/THIRD-PARTY-NOTICES.md",
+    ),
+];
+
+fn project_link(name: &str) -> Option<&'static str> {
+    PROJECT_LINKS
+        .iter()
+        .find(|(n, _)| *n == name)
+        .map(|(_, url)| *url)
+}
 
 /// Documents handed to the app by the OS, waiting for the editor to pick them up.
 /// `allowed` is the only set of paths `read_document` will read, so the webview can't read
@@ -226,6 +249,15 @@ fn print_document(window: WebviewWindow) -> Result<(), String> {
     }
 }
 
+/// Opens one of `PROJECT_LINKS` in the default browser.
+#[tauri::command]
+fn open_project_link(app: AppHandle, link: String) -> Result<(), String> {
+    let url = project_link(&link).ok_or_else(|| format!("Unknown link: {link}"))?;
+    app.opener()
+        .open_url(url, None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
 fn queue_and_notify(app: &AppHandle, paths: Vec<PathBuf>) {
     if app.state::<OpenQueue>().push(paths) {
         let _ = app.emit(OPEN_FILES_EVENT, ());
@@ -251,6 +283,7 @@ pub fn run() {
 
     let app = builder
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(OpenQueue::default())
         .manage(LastSaveDir::default())
         .setup(|app| {
@@ -267,7 +300,8 @@ pub fn run() {
             take_pending_files,
             read_document,
             save_file,
-            print_document
+            print_document,
+            open_project_link
         ])
         .build(tauri::generate_context!())
         .expect("error while building Qalam Urdu Studio");
@@ -310,6 +344,16 @@ mod tests {
     fn sanitizes_names() {
         assert_eq!(sanitize_file_name("a/b:c?.pdf"), "a_b_c_.pdf");
         assert_eq!(sanitize_file_name("  ..  "), "Qalam_Document");
+    }
+
+    #[test]
+    fn only_known_project_links_open() {
+        assert_eq!(
+            project_link("source"),
+            Some("https://github.com/uzairasad/qalam-urdu-studio")
+        );
+        assert!(PROJECT_LINKS.iter().all(|(_, u)| u.starts_with("https://")));
+        assert_eq!(project_link("file:///etc/passwd"), None);
     }
 
     #[test]

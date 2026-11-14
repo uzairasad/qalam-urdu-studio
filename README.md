@@ -13,6 +13,8 @@ Created by **Uzair Asad**
 [Download](https://github.com/uzairasad/qalam-urdu-studio/releases/latest) ·
 [Changelog](CHANGELOG.md)
 
+[![License: GPL v3+](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
+
 </div>
 
 ![Qalam Urdu Studio with an Urdu newspaper front page laid out in three columns](site/screenshot.png)
@@ -104,6 +106,7 @@ public/               web app icons
 site/                 GitHub Pages project page
 scripts/              build helpers (single-file offline build, font trimming)
 docs/                 SIGNING.md: release signing
+LICENSE               GPL-3.0 text; THIRD-PARTY-NOTICES.md lists fonts and libraries
 .github/workflows/    ci.yml, release.yml, pages.yml
 ```
 
@@ -136,6 +139,15 @@ Rust checks: `cargo fmt --all`, `cargo clippy --workspace --all-targets -- -D wa
 
 Pushing to `main` also rebuilds the website and the web app (`.github/workflows/pages.yml`).
 
-## Author
+## License
 
-Qalam Urdu Studio is created by **Uzair Asad**. © 2026 Uzair Asad. All rights reserved.
+Qalam Urdu Studio is created by **Uzair Asad** and is free and open-source software, licensed
+under the [GNU General Public License v3.0 or later](LICENSE). You can use it for anything,
+including commercial work, study and change the source, and share it. Any version you
+distribute, changed or not, must stay under the same license, with its source available and
+its credits kept. Documents you make with the app are entirely yours.
+
+The bundled fonts are under the SIL Open Font License 1.1, and the libraries under their own
+permissive licenses: see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+© 2026 Uzair Asad

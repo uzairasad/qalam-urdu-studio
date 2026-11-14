@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Qalam Urdu Studio is now open source under the GNU GPL v3.0 or later. The About box shows the
+  license with links to the website, source code, license and third-party notices.
 - Android: the APK is now a signed release build (`-android-arm64.apk`, about 11 MB), so future versions
   install as updates. It's signed with a different key than earlier test builds, so uninstall
   0.1.x before installing it.

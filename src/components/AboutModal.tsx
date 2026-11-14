@@ -1,8 +1,15 @@
 import React from 'react';
 import { X, Info } from 'lucide-react';
 import { QalamBrandEmblem } from './DtpIcons';
-import { APP_AUTHOR, APP_VERSION } from '../appInfo';
-import { isNativeApp } from '../platform/native';
+import { APP_AUTHOR, APP_VERSION, type ProjectLink } from '../appInfo';
+import { isNativeApp, openProjectLink } from '../platform/native';
+
+const LINKS: { link: ProjectLink; label: string }[] = [
+  { link: 'website', label: 'Website' },
+  { link: 'source', label: 'Source code' },
+  { link: 'license', label: 'License' },
+  { link: 'notices', label: 'Third-party notices' },
+];
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -68,13 +75,34 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               <p>• Multi-column frames, table builder, snap grid & character scaling</p>
               <p>• Open &amp; Save .qlm / .inp / Word (.docx) / PDF / TXT, Export PDF, HTML, PNG &amp; Web App</p>
             </div>
+
+            <div className="text-[10px] text-slate-600 leading-relaxed border-t border-slate-200 pt-2">
+              <p>
+                Free and open-source software under the{' '}
+                <span className="font-semibold text-slate-800">GNU General Public License v3.0</span>{' '}
+                or later: you can use, share and change it, and versions you share stay open source.
+                Bundled fonts are under the SIL Open Font License.
+              </p>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                {LINKS.map(({ link, label }) => (
+                  <button
+                    key={link}
+                    type="button"
+                    onClick={() => void openProjectLink(link)}
+                    className="text-blue-700 hover:text-blue-900 hover:underline font-medium"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="px-4 py-2 flex items-center justify-between gap-3 bg-slate-50 border-t border-slate-200">
           <span className="text-[10px] text-slate-500">
-            © {new Date().getFullYear()} {APP_AUTHOR}
+            © 2026 {APP_AUTHOR} · GPL-3.0-or-later
           </span>
           <button
             type="button"
