@@ -44,10 +44,12 @@ import { TEMPLATES, blankProject, isUntouchedTemplate } from './utils/templates'
 import { URDU_NUMERALS, stripUrduDiacritics } from './utils/phoneticKeyboard';
 import { resolveFontStack } from './utils/fonts';
 import { exportPageToPng } from './utils/exportPng';
-import { exportForInPage } from './utils/exportInpage';
+import { exportForInPage, getProjectBaseName } from './utils/exportInpage';
+import { writeInPage } from './utils/inpageWriter';
 import { inPageBytesToProject, InPageFormatError, looksLikeInPageText } from './utils/importInpage';
 import { fitTextToFrames } from './utils/fitText';
 import { useTheme } from './theme';
+import { updateTextElement } from './utils/richText';
 import { decodeQlm, encodeQlm, QlmFormatError } from './utils/qlmFormat';
 import { APP_VERSION } from './appInfo';
 import { isOleFile } from './utils/ole';
@@ -356,7 +358,7 @@ export default function App() {
       newProject = {
         ...project,
         masterElements: project.masterElements.map((el) =>
-          el.id === id ? ({ ...el, ...updated } as DocElement) : el
+          el.id === id ? (updateTextElement(el, updated as Partial<TextElement>) as DocElement) : el
         ),
       };
     } else {
@@ -367,7 +369,7 @@ export default function App() {
           return {
             ...p,
             elements: p.elements.map((el) =>
-              el.id === id ? ({ ...el, ...updated } as DocElement) : el
+              el.id === id ? (updateTextElement(el, updated as Partial<TextElement>) as DocElement) : el
             ),
           };
         }),
@@ -771,6 +773,26 @@ export default function App() {
     if (!saved) return;
     setIsModified(false);
     showToast(`Saved ${saved}`);
+  };
+
+  // Save as a real InPage file (.inp): text, formatting and pages; layout set again in InPage
+  const handleSaveAsInPage = async () => {
+    const { bytes, unmappable, pages } = writeInPage(project);
+    const name = `${getProjectBaseName(project.fileName || 'Qalam_Document')}.inp`;
+    const saved = await saveFile(name, bytes);
+    if (!saved) return;
+    setDialog({
+      isOpen: true,
+      type: 'info',
+      title: 'Saved as InPage',
+      message:
+        `Saved "${saved}" as an InPage 2000–2005 document (${pages} page${pages === 1 ? '' : 's'}).\n\n` +
+        'The text, paragraphs, fonts, sizes, bold, colours and alignment are saved, and the page size and margins. ' +
+        'InPage sets the lines again when it opens the file; frame positions, pictures and shapes are not saved. ' +
+        'This is new: if InPage cannot open the file, please let us know, and use Export for InPage (.txt) meanwhile.' +
+        (unmappable ? `\n\n${unmappable} character${unmappable === 1 ? '' : 's'} have no InPage equivalent and were left out.` : ''),
+      onConfirm: () => {},
+    });
   };
 
   // Export the text for old InPage (2000 / XP 2004 / 2005), which can't read Unicode
@@ -1317,7 +1339,7 @@ export default function App() {
             const matches = te.text.match(regex);
             if (matches) {
               totalCount += matches.length;
-              return { ...el, text: te.text.replace(regex, replaceText) };
+              return updateTextElement(el, { text: te.text.replace(regex, replaceText) });
             }
           }
           return el;
@@ -1534,6 +1556,7 @@ export default function App() {
         onOpenTxt={() => txtFileInputRef.current?.click()}
         onSave={handleSaveProject}
         onExportForInPage={handleExportForInPage}
+        onSaveAsInPage={handleSaveAsInPage}
         onExportPdf={handleExportPdf}
         onExportDocx={handleExportDocx}
         onExportTxt={handleExportTxt}

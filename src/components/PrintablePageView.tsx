@@ -1,4 +1,6 @@
 import React from 'react';
+import { tableColumnPercents } from '../utils/tables';
+import { RichText } from './RichText';
 import {
   DocElement,
   Page,
@@ -58,7 +60,6 @@ export const PrintablePageView: React.FC<PrintablePageViewProps> = ({
         (te.direction || 'rtl') === 'rtl'
           ? pageNumStr.replace(/[0-9]/g, (d) => URDU_NUMERALS[d] || d)
           : pageNumStr;
-      const displayText = (te.text || '').replace(/\{\{PAGE\}\}/g, localizedNum);
       const transformOrigin =
         te.align === 'left' ? 'left top' : te.align === 'center' ? 'center top' : 'right top';
 
@@ -93,7 +94,11 @@ export const PrintablePageView: React.FC<PrintablePageViewProps> = ({
                 transformOrigin,
               }}
             >
-              {displayText}
+              <RichText
+                te={te}
+                fontSize={(pt) => `${pt}pt`}
+                formatText={(t) => t.replace(/\{\{PAGE\}\}/g, localizedNum)}
+              />
             </div>
           </div>
         </div>
@@ -124,7 +129,17 @@ export const PrintablePageView: React.FC<PrintablePageViewProps> = ({
                 src={pe.imageSrc}
                 alt={pe.caption || ''}
                 referrerPolicy="no-referrer"
-                className={`w-full h-full ${fitClass}`}
+                className={pe.imageBox ? 'absolute max-w-none' : `w-full h-full ${fitClass}`}
+                style={
+                  pe.imageBox
+                    ? {
+                        left: `${pe.imageBox.x}mm`,
+                        top: `${pe.imageBox.y}mm`,
+                        width: `${pe.imageBox.width}mm`,
+                        height: `${pe.imageBox.height}mm`,
+                      }
+                    : undefined
+                }
               />
             )}
             {pe.caption && (
@@ -178,15 +193,23 @@ export const PrintablePageView: React.FC<PrintablePageViewProps> = ({
     if (elem.type === 'table') {
       const tbl = elem as TableElement;
       return (
-        <div key={elem.id} style={baseStyle} className="overflow-hidden bg-white" dir="rtl">
+        <div key={elem.id} style={baseStyle} className={`overflow-hidden ${tbl.backgroundColor === 'transparent' ? '' : 'bg-white'}`} dir="rtl">
           <table
             className="w-full h-full border-collapse text-right leading-[1.75]"
             style={{
               fontFamily: resolveFontStack(tbl.fontFamily),
               fontSize: `${tbl.fontSize || 10}pt`,
               color: tbl.color || '#1f2937',
+              tableLayout: tbl.colWidths ? 'fixed' : undefined,
             }}
           >
+            {tbl.colWidths && (
+              <colgroup>
+                {tableColumnPercents(tbl).map((pct, i) => (
+                  <col key={i} style={{ width: `${pct}%` }} />
+                ))}
+              </colgroup>
+            )}
             <tbody>
               {tbl.data.map((row, rIdx) => (
                 <tr
@@ -196,9 +219,11 @@ export const PrintablePageView: React.FC<PrintablePageViewProps> = ({
                   {row.map((cell, cIdx) => (
                     <td
                       key={cIdx}
-                      className="p-1 text-center"
+                      className="p-1"
                       style={{
-                        border: `0.75pt solid ${tbl.borderColor || '#64748b'}`,
+                        border: tbl.cellBorders === false ? 'none' : `0.75pt solid ${tbl.borderColor || '#64748b'}`,
+                        textAlign: tbl.cellAlign ?? 'center',
+                        whiteSpace: 'pre-wrap',
                       }}
                     >
                       {cell}

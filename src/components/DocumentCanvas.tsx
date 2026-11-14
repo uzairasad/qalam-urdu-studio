@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { tableColumnPercents } from '../utils/tables';
+import { RichText } from './RichText';
 import {
   DocElement,
   PageSetup,
@@ -882,7 +884,6 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
           (te.direction || 'rtl') === 'rtl'
             ? pageNumStr.replace(/[0-9]/g, (d) => URDU_NUMERALS[d] || d)
             : pageNumStr;
-        const displayText = (te.text || '').replace(/\{\{PAGE\}\}/g, localizedNum);
         const transformOrigin =
           te.align === 'left' ? 'left top' : te.align === 'center' ? 'center top' : 'right top';
 
@@ -942,7 +943,11 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
                     transformOrigin,
                   }}
                 >
-                  {displayText}
+                  <RichText
+                    te={te}
+                    fontSize={(pt) => `${(pt * (96 / 72) * zoom).toFixed(2)}px`}
+                    formatText={(t) => t.replace(/\{\{PAGE\}\}/g, localizedNum)}
+                  />
                 </div>
               )}
             </div>
@@ -989,7 +994,17 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
                 alt={pe.caption || 'Qalam Studio Picture'}
                 referrerPolicy="no-referrer"
                 onError={() => setImgFailed(true)}
-                className={`w-full h-full ${fitClass} pointer-events-none`}
+                className={pe.imageBox ? 'absolute max-w-none pointer-events-none' : `w-full h-full ${fitClass} pointer-events-none`}
+                style={
+                  pe.imageBox
+                    ? {
+                        left: mmToPx(pe.imageBox.x),
+                        top: mmToPx(pe.imageBox.y),
+                        width: mmToPx(pe.imageBox.width),
+                        height: mmToPx(pe.imageBox.height),
+                      }
+                    : undefined
+                }
               />
             ) : (
               <div className="w-full h-full relative flex flex-col items-center justify-center border border-dashed border-slate-400 text-slate-500">
@@ -1048,21 +1063,34 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
 
       {/* Table Element */}
       {elem.type === 'table' && (
-        <div className="w-full h-full overflow-auto bg-white" dir="rtl">
+        <div
+          className={`w-full h-full overflow-auto ${elem.backgroundColor === 'transparent' ? '' : 'bg-white'}`}
+          dir="rtl"
+        >
           <table
             className="w-full h-full border-collapse text-right leading-[1.75]"
             style={{
               fontFamily: resolveFontStack((elem as TableElement).fontFamily),
               fontSize: `${(((elem as TableElement).fontSize || 10) * (96 / 72) * zoom).toFixed(2)}px`,
+              color: (elem as TableElement).color || undefined,
+              tableLayout: (elem as TableElement).colWidths ? 'fixed' : undefined,
             }}
           >
+            {(elem as TableElement).colWidths && (
+              <colgroup>
+                {tableColumnPercents(elem as TableElement).map((pct, i) => (
+                  <col key={i} style={{ width: `${pct}%` }} />
+                ))}
+              </colgroup>
+            )}
             <tbody>
               {(elem as TableElement).data.map((row, rIdx) => (
                 <tr key={rIdx} className={rIdx === 0 && (elem as TableElement).headerRow ? 'bg-slate-100 font-bold' : ''}>
                   {row.map((cell, cIdx) => (
                     <td
                       key={cIdx}
-                      className="border border-slate-400 p-1 text-center"
+                      className={`p-1 ${(elem as TableElement).cellBorders === false ? '' : 'border border-slate-400'}`}
+                      style={{ textAlign: (elem as TableElement).cellAlign ?? 'center', whiteSpace: 'pre-wrap' }}
                       contentEditable={isSelected && !elem.locked}
                       suppressContentEditableWarning
                       onBlur={(e) => {

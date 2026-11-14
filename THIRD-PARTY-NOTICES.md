@@ -36,5 +36,13 @@ any software. The fonts themselves stay under the OFL and can't be sold on their
 | [Lucide](https://lucide.dev) icons | ISC |
 | [Motion](https://motion.dev) | MIT |
 
+## InPage format research
+
+Reading and writing InPage documents builds on published research: the Sindhi character table
+in `src/utils/inpageSindhi.ts` comes from [urdu-page](https://github.com/mubashir2k17/urdu-page)
+(MIT), and the writer's template (`src/utils/inpageTemplate.ts`) holds structural parts (no text)
+of InPage's own sample document FONTS.INP, as published there. InPage is a product of Concept
+Software; Qalam Urdu Studio is not affiliated with it.
+
 The complete list of JavaScript and Rust dependencies, with their versions, is in
 `package-lock.json` and `Cargo.lock`. Each package's license ships with it.

@@ -159,6 +159,7 @@ interface RibbonToolbarProps {
   onOpenTxt: () => void;
   onSave: () => void;
   onExportForInPage: () => void;
+  onSaveAsInPage: () => void;
   onExportPdf: () => void;
   onExportDocx: () => void;
   onExportTxt: () => void;
@@ -227,6 +228,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
   onOpenTxt,
   onSave,
   onExportForInPage,
+  onSaveAsInPage,
   onExportPdf,
   onExportDocx,
   onExportTxt,
@@ -638,6 +640,21 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                   </span>
                   <span className="hidden sm:inline text-[10px] text-slate-400 group-hover:text-white/90 font-mono">
                     Ctrl+S
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onMouseEnter={() => handleDesktopSubmenuHover(null)}
+                  onClick={() => {
+                    setFileMenuOpen(false);
+                    onSaveAsInPage();
+                  }}
+                  className={fileItemClass}
+                >
+                  <span className="flex items-center gap-2">
+                    <FileOutput className="w-4 h-4 text-blue-600 group-hover:text-white transition-colors" />
+                    <span>Save as InPage (.inp, experimental)...</span>
                   </span>
                 </button>
 
@@ -2081,6 +2098,15 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                     >
                       <TableHeaderShadeIcon className="w-4 h-4" />
                       <span>Header Row Shading</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateElement({ cellBorders: tableElem.cellBorders === false })}
+                      aria-pressed={tableElem.cellBorders !== false}
+                      className={ribbonBtnClass(tableElem.cellBorders !== false)}
+                    >
+                      <Grid className="w-4 h-4 text-slate-500" />
+                      <span>Cell Borders</span>
                     </button>
                   </div>
                 )}

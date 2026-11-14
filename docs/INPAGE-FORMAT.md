@@ -115,8 +115,33 @@ The importer gives every frame the lines whose heights add up to the height InPa
 so text breaks between linked frames, and between pages, exactly where InPage broke it. Line
 heights also give each paragraph its exact position inside the frame.
 
+## What the importer does with it
+
+- **Per-word formatting:** each piece of text keeps its style run's font, size, weight, italic and
+  colour where they differ from its block's (`TextElement.runs`).
+- **Tables:** lines whose runs are table cells (`7f87`) carry each cell's edges (`+8`/`+12`, from the
+  right, in reading order). A run of rows with two or more cells becomes a table with those column
+  widths; a row that is one cell spanning the table stays a line of text.
+- **Pictures:** `05.01`/`05.02` place the image inside the frame (from inside its border), at its
+  natural size `05.03`/`05.04` (1/2000 pt) times `05.08`/`05.09` (thousandths); the frame crops it.
+  `05.0d` is 8 bytes and `05.0f` 4 bytes wide.
+- **Text wrap:** a line's available width (`+28`) is less than the column where it wraps around
+  an object; its run extents (`+8`/`+12` from the column's left) show which side it was set on. Such
+  lines are placed one by one in that space. Multi-column frames are laid out column by column.
+
+## Writing (.inp)
+
+`src/utils/inpageWriter.ts` writes InPage100 files. Parts not understood are copied from InPage's
+own sample document FONTS.INP (`src/utils/inpageTemplate.ts`: header and preferences, colour table,
+defaults, style sheet, font table, record layouts; none of its text). Written from the document:
+page size and margins (defaults and page records), one page per page (object numbers continue the
+template's sequence), the text as one story through the master page's text frame, style runs, saved
+frames, and one saved line per paragraph, so InPage sets the lines itself. The section table at
+`0x10` (`[u16 id][u32 end]` × 7) and the main section's story count are updated. Frame positions,
+pictures and shapes aren't written. Not yet tried in InPage itself.
+
 ## Not read yet
 
-Per-word formatting (Qalam frames have one style each, so each block takes the style of most of
-its text), table cell geometry (rows come in with their cells separated by tabs), kashida
-justification, picture cropping, and text wrap around shapes.
+Table cell borders (where InPage keeps them hasn't been found; tables come in without, as InPage's
+own output of the sample tables shows), merged table cells, kashida justification, and the
+contour of text wrap (the space beside the object is used, not its exact outline).

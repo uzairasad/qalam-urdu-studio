@@ -40,9 +40,10 @@ Linux and Android, and in any modern browser.
   2005, 2009 and later (`.inp`, the `.B01` backups next to them, and InPage text exports) open
   as Unicode Urdu with their pages rebuilt: page size and margins, every text frame where it
   was, with the text InPage set in it (linked frames break where InPage broke them), columns,
-  rotation, fonts, sizes, alignment, borders, lines, boxes and pictures. **Export for InPage
-  2000–2005** writes text the other way, in InPage's own encoding, for File → Import in old
-  InPage.
+  text wrap, rotation, per-word fonts, sizes, bold and colours, alignment, tables, borders,
+  lines, boxes and pictures (placed and cropped). **Save as InPage (.inp)** writes InPage
+  2000–2005 documents (experimental), and **Export for InPage** writes text in InPage's own
+  encoding for File → Import.
 - **Light and dark.** Follows the system theme, or pick one under View → Theme. Pages always
   show (and print) in their real colours.
 - **Print-ready.** Print preview and native printing at the exact physical page size.

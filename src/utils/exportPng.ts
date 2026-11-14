@@ -11,6 +11,8 @@ import { resolveFontStack } from './fonts';
 import { URDU_NUMERALS } from './phoneticKeyboard';
 import { getProjectBaseName } from './exportInpage';
 import { saveFile } from '../platform/native';
+import { hasFormatting, runsOf } from './richText';
+import { tableColumnPercents } from './tables';
 
 function formatPageNumberToken(text: string, pageNumber: number, direction: 'rtl' | 'ltr'): string {
   const numStr = String(pageNumber);
@@ -37,6 +39,113 @@ function drawRoundedRectPath(
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+/**
+ * A text frame with per-word formatting: words are measured in their own fonts, wrapped, and
+ * placed right to left (Urdu) or left to right, line by line and column by column.
+ */
+function drawRichText(
+  ctx: CanvasRenderingContext2D,
+  t: TextElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  pageNumber: number,
+  scaleMultiplier: number,
+  dpiScale: number
+) {
+  const rtl = (t.direction || 'rtl') === 'rtl';
+  const pxOf = (pt: number) => pt * (96 / 72) * scaleMultiplier;
+  const baseSize = pxOf(t.fontSize || 12);
+  const lh = t.lineHeight || 1.85;
+  const scaleX = (t.scaleX || 100) / 100;
+  const insetPx = (t.paddingMm ?? 1.5) * dpiScale;
+  const padX = Math.max(5 * scaleMultiplier, insetPx + 2 * scaleMultiplier);
+  const padTop = Math.max(4 * scaleMultiplier, baseSize * 0.28 + insetPx);
+  const padBottom = Math.max(5 * scaleMultiplier, baseSize * 0.34 + insetPx);
+  const colCount = Math.max(1, t.columns || 1);
+  const colGap = (t.columnGutter ?? 4) * dpiScale;
+  const innerW = Math.max(20, w - padX * 2);
+  const colW = (innerW - colGap * (colCount - 1)) / colCount;
+  const maxW = Math.max(20, colW / scaleX);
+
+  interface Token { text: string; font: string; size: number; color: string; underline: boolean; width: number; space: boolean }
+  const lines: { tokens: Token[]; width: number; size: number }[] = [];
+  let line: { tokens: Token[]; width: number; size: number } = { tokens: [], width: 0, size: baseSize };
+  const push = () => {
+    while (line.tokens.length && line.tokens[line.tokens.length - 1].space) line.width -= line.tokens.pop()!.width;
+    lines.push(line);
+    line = { tokens: [], width: 0, size: baseSize };
+  };
+  for (const run of runsOf(t)) {
+    const size = pxOf(run.fontSize ?? t.fontSize ?? 12);
+    const bold = run.bold ?? t.bold;
+    const italic = run.italic ?? t.italic;
+    const font = `${italic ? 'italic ' : ''}${bold ? 'bold ' : ''}${size}px ${resolveFontStack(run.fontFamily ?? t.fontFamily)}`;
+    const text = formatPageNumberToken(run.text, pageNumber, t.direction || 'rtl');
+    for (const piece of text.split(/(\n|[ \t]+)/)) {
+      if (!piece) continue;
+      if (piece === '\n') {
+        push();
+        continue;
+      }
+      const space = /^[ \t]+$/.test(piece);
+      if (space && !line.tokens.length) continue;
+      ctx.font = font;
+      const width = ctx.measureText(piece).width;
+      if (!space && line.tokens.length && line.width + width > maxW) push();
+      line.tokens.push({ text: piece, font, size, color: run.color ?? t.color ?? '#000000', underline: run.underline ?? t.underline, width, space });
+      line.width += width;
+      line.size = Math.max(line.size, size);
+    }
+  }
+  push();
+
+  ctx.direction = rtl ? 'rtl' : 'ltr';
+  ctx.textAlign = 'left';
+  let col = 0;
+  let cursorY = y + padTop;
+  for (const ln of lines) {
+    // The frame's line spacing (InPage's), whatever the sizes of the words on the line.
+    const lineH = baseSize * lh;
+    if (cursorY + lineH > y + h - padBottom + 2 * scaleMultiplier) {
+      col++;
+      cursorY = y + padTop;
+      if (col >= colCount) break;
+    }
+    const visualCol = rtl ? colCount - 1 - col : col;
+    const colLeft = x + padX + visualCol * (colW + colGap);
+    const width = ln.width * scaleX;
+    const start =
+      t.align === 'center' ? colLeft + (colW - width) / 2 : t.align === 'left' || (!rtl && t.align !== 'right') ? colLeft : colLeft + colW - width;
+    const baseline = cursorY + (lineH - ln.size) / 2 + ln.size * 0.85;
+    let cursor = rtl ? start + width : start;
+    for (const tok of ln.tokens) {
+      const tw = tok.width * scaleX;
+      const left = rtl ? cursor - tw : cursor;
+      if (!tok.space) {
+        ctx.save();
+        ctx.font = tok.font;
+        ctx.fillStyle = tok.color;
+        ctx.translate(left, baseline);
+        if (scaleX !== 1) ctx.scale(scaleX, 1);
+        ctx.fillText(tok.text, 0, 0);
+        ctx.restore();
+      }
+      if (tok.underline) {
+        ctx.beginPath();
+        ctx.strokeStyle = tok.color;
+        ctx.lineWidth = Math.max(1, tok.size * 0.06);
+        ctx.moveTo(left, baseline + tok.size * 0.14);
+        ctx.lineTo(left + tw, baseline + tok.size * 0.14);
+        ctx.stroke();
+      }
+      cursor = rtl ? cursor - tw : cursor + tw;
+    }
+    cursorY += lineH;
+  }
 }
 
 /**
@@ -207,7 +316,21 @@ export async function renderPageToCanvas(
             }
 
             const fit = p.objectFit || 'cover';
-            if (fit === 'fill' || !img.naturalWidth || !img.naturalHeight) {
+            if (p.imageBox) {
+              // Placed and cropped as in the source document.
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(x, y, w, h);
+              ctx.clip();
+              ctx.drawImage(
+                img,
+                x + p.imageBox.x * dpiScale,
+                y + p.imageBox.y * dpiScale,
+                p.imageBox.width * dpiScale,
+                p.imageBox.height * dpiScale
+              );
+              ctx.restore();
+            } else if (fit === 'fill' || !img.naturalWidth || !img.naturalHeight) {
               ctx.drawImage(img, x, y, w, h);
             } else {
               const imgRatio = img.naturalWidth / img.naturalHeight;
@@ -256,7 +379,9 @@ export async function renderPageToCanvas(
       }
     }
 
-    if (elem.type === 'text') {
+    if (elem.type === 'text' && hasFormatting((elem as TextElement).runs)) {
+      drawRichText(ctx, elem as TextElement, x, y, w, h, pageNumber, scaleMultiplier, dpiScale);
+    } else if (elem.type === 'text') {
       const t = elem as TextElement;
       const fontSizePx = t.fontSize * (96 / 72) * scaleMultiplier;
       const lineHeightPx = fontSizePx * (t.lineHeight || 1.85);
@@ -358,27 +483,40 @@ export async function renderPageToCanvas(
     if (elem.type === 'table') {
       const tbl = elem as TableElement;
       const rows = tbl.data.length || 1;
-      const cols = tbl.data[0]?.length || 1;
-      const cellW = w / cols;
+      const pct = tableColumnPercents(tbl);
       const cellH = h / rows;
       const tblFontPx = (tbl.fontSize || 10) * (96 / 72) * scaleMultiplier;
+      const align = tbl.cellAlign ?? 'center';
 
       tbl.data.forEach((row, rIdx) => {
+        // RTL table: the first column is on the right.
+        let right = x + w;
         row.forEach((cell, cIdx) => {
-          const cx = x + (cols - 1 - cIdx) * cellW; // RTL table layout
+          const cellW = (w * (pct[cIdx] ?? 0)) / 100;
+          const cx = right - cellW;
+          right = cx;
           const cy = y + rIdx * cellH;
           if (rIdx === 0 && tbl.headerRow) {
             ctx.fillStyle = '#f1f5f9';
             ctx.fillRect(cx, cy, cellW, cellH);
           }
-          ctx.strokeStyle = tbl.borderColor || '#64748b';
-          ctx.lineWidth = Math.max(1, 0.8 * scaleMultiplier);
-          ctx.strokeRect(cx, cy, cellW, cellH);
+          if (tbl.cellBorders !== false) {
+            ctx.strokeStyle = tbl.borderColor || '#64748b';
+            ctx.lineWidth = Math.max(1, 0.8 * scaleMultiplier);
+            ctx.strokeRect(cx, cy, cellW, cellH);
+          }
           ctx.fillStyle = tbl.color || '#1f2937';
           ctx.font = `${rIdx === 0 && tbl.headerRow ? 'bold ' : ''}${tblFontPx}px ${resolveFontStack(tbl.fontFamily)}`;
-          ctx.textAlign = 'center';
+          ctx.direction = 'rtl';
+          ctx.textAlign = align === 'left' ? 'left' : align === 'center' ? 'center' : 'right';
           ctx.textBaseline = 'middle';
-          ctx.fillText(cell, cx + cellW / 2, cy + cellH / 2, cellW - 6 * scaleMultiplier);
+          const pad = 3 * scaleMultiplier;
+          const tx = align === 'left' ? cx + pad : align === 'center' ? cx + cellW / 2 : cx + cellW - pad;
+          const lines = cell.split('\n');
+          const lh = tblFontPx * 1.6;
+          lines.forEach((ln, i) => {
+            ctx.fillText(ln, tx, cy + cellH / 2 + (i - (lines.length - 1) / 2) * lh, Math.max(1, cellW - 2 * pad));
+          });
         });
       });
     }

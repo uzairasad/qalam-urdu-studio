@@ -7,6 +7,7 @@
  */
 import type { DocumentProject, TextElement } from '../types/inpage.ts';
 import { resolveFontStack } from './fonts.ts';
+import { hasFormatting, runsOf, scaleRuns } from './richText.ts';
 
 const MM_TO_PX = 3.78; // as DocumentCanvas at 100% zoom
 
@@ -62,7 +63,20 @@ export async function fitTextToFrames(project: DocumentProject, minScale = 0.55)
     box.style.columnCount = columns ? String(columns) : 'auto';
     box.style.columnGap = columns ? `${(f.columnGutter ?? 4) * MM_TO_PX}px` : 'normal';
     box.style.height = columns ? `${Math.max(4, height)}px` : 'auto';
-    box.textContent = f.text.replace(/\{\{PAGE\}\}/g, '99');
+    box.textContent = '';
+    const scale = size / f.fontSize;
+    for (const r of hasFormatting(f.runs) ? runsOf(f) : [{ text: f.text }]) {
+      const span = document.createElement('span');
+      span.textContent = r.text.replace(/\{\{PAGE\}\}/g, '99');
+      if ('bold' in r && r.bold !== undefined) span.style.fontWeight = r.bold ? 'bold' : 'normal';
+      if ('italic' in r && r.italic !== undefined) span.style.fontStyle = r.italic ? 'italic' : 'normal';
+      if ('fontFamily' in r && r.fontFamily) span.style.fontFamily = resolveFontStack(r.fontFamily);
+      if ('fontSize' in r && r.fontSize) {
+        span.style.fontSize = `${r.fontSize * scale * (96 / 72)}px`;
+        span.style.lineHeight = `${size * lineHeight * (96 / 72)}px`;
+      }
+      box.appendChild(span);
+    }
     if (columns) return box.scrollWidth <= Math.ceil(box.clientWidth) + 1;
     return box.scrollHeight <= height + 1;
   };
@@ -89,6 +103,7 @@ export async function fitTextToFrames(project: DocumentProject, minScale = 0.55)
       }
       const size = Math.max(1, Math.floor(lo * 10) / 10);
       f.lineHeight = Math.round(lh(size) * 1000) / 1000;
+      f.runs = scaleRuns(f.runs, size / original);
       f.fontSize = size;
       changed++;
     }

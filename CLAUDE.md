@@ -34,6 +34,9 @@ before dev builds dropped dependency debug info in `Cargo.toml`).
 | `src/utils/export*.ts`, `import*.ts` | PDF, Word, PNG, text export; Word/PDF/text import |
 | `src/utils/ole.ts`, `inpageText.ts`, `importInpage.ts` | Real InPage files: OLE reader, InPage↔Unicode table and fixes, entry point (layout, falling back to text); `exportInpage.ts` writes InPage-encoded text |
 | `src/utils/inpageFormat.ts`, `inpageLayout.ts`, `fitText.ts`, `dibToPng.ts` | InPage structures (layout records, fonts, text, styles, saved frames and lines; `docs/INPAGE-FORMAT.md`), pages rebuilt from them, shrinking text that overflows (browser), pictures |
+| `src/utils/richText.ts`, `components/RichText.tsx` | Per-word formatting (`TextElement.runs`): rendering, keeping runs in step with edits (`updateTextElement`) |
+| `src/utils/inpageWriter.ts`, `inpageTemplate.ts`, `oleWriter.ts` | Save as InPage (.inp): InPage100 stream from the document + template pieces of InPage's FONTS.INP; OLE writer |
+| `src/utils/tables.ts` | Table column widths |
 | `src/utils/qlmFormat.ts` | The .qlm format: ZIP package (mimetype, document.json, media/), opens older JSON saves (`docs/QLM-FORMAT.md`) |
 | `src/theme.ts`, `src/index.css` | Light/dark theme (`data-theme`; dark remaps the palette, `.page-background`/`.print-page-view`/`.keep-colors` keep real colours); safe-area insets (`--safe-*`) |
 | `src/utils/textLayout.ts` | Plain text → A4 pages of text frames (used by the .txt and InPage importers) |

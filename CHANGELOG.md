@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.8 — 2026-11-15
+
+- **Per-word formatting.** Text frames can mix fonts, sizes, bold, italic and colours word by word.
+  InPage documents keep theirs, and the formatting shows and prints the same, in PDF, PNG and Word
+  too, and stays put while you edit the text.
+- **InPage tables** come in as tables, with InPage's column widths (cell borders can be turned on
+  or off per table: Table → Cell Borders).
+- **InPage pictures** keep their size, position and cropping inside their frames.
+- **Text wrap:** lines InPage wrapped around a picture or shape stay beside it, and multi-column
+  frames keep each column's lines where InPage set them.
+- **Save as InPage (.inp)** (File menu, experimental): saves the text, paragraphs, fonts, sizes,
+  bold, colours, alignment, pages, page size and margins as an InPage 2000–2005 document, which
+  every InPage from 2000 on opens. InPage sets the lines again; frame positions, pictures and
+  shapes aren't saved. Not yet tried in InPage itself: if it won't open a file, please report it.
+- Fixed: a picture's properties could be misread in InPage files.
+
 ## 0.1.7 — 2026-11-15
 
 - **Phones: the title bar no longer sits under the status bar and camera cutout**, and dialogs

@@ -16,6 +16,9 @@ import {
   WidthType,
   convertMillimetersToTwip,
 } from 'docx';
+import type { TextRun as QalamTextRun } from '../types/inpage';
+import { runsOf } from './richText';
+import { tableColumnPercents } from './tables';
 import {
   DocElement,
   DocumentProject,
@@ -161,8 +164,16 @@ export async function exportProjectToDocx(project: DocumentProject): Promise<str
       if (elem.type === 'text') {
         const te = elem as TextElement;
         const isRtl = (te.direction || 'rtl') === 'rtl';
-        const resolvedText = localizePageTokens(te.text || '', page.pageNumber, isRtl);
-        const lines = resolvedText.split('\n');
+        // Each line becomes a paragraph of runs (per-word formatting carried over).
+        const lineRuns: QalamTextRun[][] = [[]];
+        for (const run of runsOf(te)) {
+          const parts = localizePageTokens(run.text, page.pageNumber, isRtl).split('\n');
+          parts.forEach((part, i) => {
+            if (i > 0) lineRuns.push([]);
+            if (part) lineRuns[lineRuns.length - 1].push({ ...run, text: part });
+          });
+        }
+        const lines = lineRuns;
         const fontName = te.fontFamily || 'Noto Nastaliq Urdu';
         const colorHex = normalizeHexColor(te.color, '111827');
         const halfPts = Math.max(14, Math.round((te.fontSize || 12) * 2));
@@ -219,23 +230,21 @@ export async function exportProjectToDocx(project: DocumentProject): Promise<str
                     },
                   }
                 : undefined,
-              children: [
-                new TextRun({
-                  text: lineText,
-                  font: {
-                    name: fontName,
-                    cs: fontName,
-                    ascii: fontName,
-                    hAnsi: fontName,
-                  },
-                  size: halfPts,
-                  bold: Boolean(te.bold),
-                  italics: Boolean(te.italic),
-                  underline: te.underline ? { type: UnderlineType.SINGLE } : undefined,
-                  color: colorHex,
+              children: (lineText.length ? lineText : [{ text: '' }]).map((run) => {
+                const runFont = run.fontFamily || fontName;
+                return new TextRun({
+                  text: run.text,
+                  font: { name: runFont, cs: runFont, ascii: runFont, hAnsi: runFont },
+                  size: run.fontSize ? Math.max(14, Math.round(run.fontSize * 2)) : halfPts,
+                  sizeComplexScript: run.fontSize ? Math.max(14, Math.round(run.fontSize * 2)) : halfPts,
+                  bold: Boolean(run.bold ?? te.bold),
+                  boldComplexScript: Boolean(run.bold ?? te.bold),
+                  italics: Boolean(run.italic ?? te.italic),
+                  underline: run.underline ?? te.underline ? { type: UnderlineType.SINGLE } : undefined,
+                  color: run.color ? normalizeHexColor(run.color, colorHex) : colorHex,
                   rightToLeft: isRtl,
-                }),
-              ],
+                });
+              }),
             })
           );
         });
@@ -246,28 +255,31 @@ export async function exportProjectToDocx(project: DocumentProject): Promise<str
         const borderHex = normalizeHexColor(tbl.borderColor, '64748B');
         const halfPts = Math.max(14, Math.round((tbl.fontSize || 10) * 2));
         const colCount = Math.max(1, tbl.data[0]?.length || 1);
-        const colWidthTwips = Math.round(mmToTwips(Math.min(tbl.width, contentWidthMm)) / colCount);
+        const tableTwips = mmToTwips(Math.min(tbl.width, contentWidthMm));
+        const colPercents = tableColumnPercents(tbl);
+        const colWidthTwips = Math.round(tableTwips / colCount);
 
         const rows = tbl.data.map((rowData, rIdx) => {
           const isHeader = Boolean(tbl.headerRow && rIdx === 0);
           return new TableRow({
             tableHeader: isHeader,
             children: rowData.map(
-              (cellText) =>
+              (cellText, cIdx) =>
                 new TableCell({
-                  width: { size: colWidthTwips, type: WidthType.DXA },
+                  width: { size: Math.round((tableTwips * (colPercents[cIdx] ?? 100 / colCount)) / 100) || colWidthTwips, type: WidthType.DXA },
                   shading: isHeader
                     ? {
                         type: ShadingType.CLEAR,
                         fill: 'F1F5F9',
                       }
                     : undefined,
-                  borders: {
-                    top: { style: BorderStyle.SINGLE, size: 6, color: borderHex },
-                    bottom: { style: BorderStyle.SINGLE, size: 6, color: borderHex },
-                    left: { style: BorderStyle.SINGLE, size: 6, color: borderHex },
-                    right: { style: BorderStyle.SINGLE, size: 6, color: borderHex },
-                  },
+                  borders: (() => {
+                    const side =
+                      tbl.cellBorders === false
+                        ? { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+                        : { style: BorderStyle.SINGLE, size: 6, color: borderHex };
+                    return { top: side, bottom: side, left: side, right: side };
+                  })(),
                   children: [
                     new Paragraph({
                       bidirectional: true,

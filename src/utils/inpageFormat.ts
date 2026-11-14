@@ -64,9 +64,10 @@ function parseObjectTags(r: Reader, start: number, end: number, polygon?: { x: n
   while (p + 2 <= end) {
     const key = r.bytes[p];
     const group = r.bytes[p + 1];
-    const width = WIDE[group]?.has(key) ? 4 : 2;
+    // Picture properties 05.0d (8 bytes) and 05.0f (4 bytes) are wider than the rest of their group.
+    const width = group === 0x05 && key === 0x0d ? 8 : group === 0x05 && key === 0x0f ? 4 : WIDE[group]?.has(key) ? 4 : 2;
     if (p + 2 + width > end) return null;
-    const value = width === 4 ? r.i32(p + 2) : r.u16(p + 2);
+    const value = width >= 4 ? r.i32(p + 2) : r.u16(p + 2);
     tags.set(tagKey(group, key), value);
     p += 2 + width;
     // Polygon vertices (7e.1b) and a picture's file names (05.00) follow their byte count.
@@ -297,6 +298,12 @@ export interface SavedLine {
   heightPt: number;
   /** A table row: its paragraphs are the row's cells, side by side. */
   row?: boolean;
+  /** Table rows: each cell's left and right edge in the frame (pt), in stored order. */
+  cells?: { x: number; right: number }[];
+  /** Where the line's text starts and ends across the column (pt from its left), from its runs. */
+  extent?: { x: number; right: number };
+  /** Width available to the line (pt): less than the column where text wraps around an object. */
+  availablePt?: number;
 }
 
 export interface InPageText {
@@ -429,8 +436,31 @@ function readSavedLines(r: Reader, start: number, total: number, runSize: number
       const sizeOk = size === 8 || (extra >= 0 && extra % 8 === 0 && extra <= 8 * runCount);
       if (count < 0 || count > total - covered || height > 4_000_000 || !sizeOk || (!lines.length && !count)) break;
       let row = false;
-      for (let i = 0; i < runCount && !row; i++) row = r.u16(p + 32 + i * runSize) === 0x7f87;
-      lines.push({ start: covered, count, heightPt: height / UNITS_PER_POINT, ...(row ? { row } : {}) });
+      const cells: { x: number; right: number }[] = [];
+      let left = Infinity;
+      let right = -Infinity;
+      for (let i = 0; i < runCount; i++) {
+        const q = p + 32 + i * runSize;
+        const kind = r.u16(q);
+        const x = r.i32(q + 8) / UNITS_PER_POINT;
+        const rx = r.i32(q + 12) / UNITS_PER_POINT;
+        if (kind === 0x7f87) {
+          row = true;
+          cells.push({ x, right: rx });
+        }
+        if (rx > x && Math.abs(x) < 5000 && Math.abs(rx) < 5000) {
+          left = Math.min(left, x);
+          right = Math.max(right, rx);
+        }
+      }
+      lines.push({
+        start: covered,
+        count,
+        heightPt: height / UNITS_PER_POINT,
+        ...(row ? { row, cells } : {}),
+        ...(right > left ? { extent: { x: left, right } } : {}),
+        ...(size > 8 ? { availablePt: r.i32(p + 28) / UNITS_PER_POINT } : {}),
+      });
       covered += count;
       p += 16 + size;
     }

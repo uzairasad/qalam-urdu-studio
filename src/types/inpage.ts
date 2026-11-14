@@ -50,9 +50,25 @@ export interface BaseElement {
   locked?: boolean;
 }
 
+/**
+ * A stretch of a text frame's text with its own formatting. The runs' texts, joined, are the
+ * frame's `text`; anything a run leaves out uses the frame's own setting.
+ */
+export interface TextRun {
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  color?: string;
+  fontFamily?: string;
+  fontSize?: number; // pt
+}
+
 export interface TextElement extends BaseElement {
   type: 'text';
   text: string;
+  /** Formatting of parts of the text (per-word bold, colour, font…); absent when uniform. */
+  runs?: TextRun[];
   isTitleBox?: boolean;
   fontFamily: string;
   fontSize: number; // in pt
@@ -75,6 +91,11 @@ export interface TextElement extends BaseElement {
 export interface PictureElement extends BaseElement {
   type: 'picture';
   imageSrc: string;
+  /**
+   * Where the image sits inside the frame (mm from the frame's top-left, at the size shown);
+   * whatever falls outside the frame is cropped. When absent the image fits by `objectFit`.
+   */
+  imageBox?: { x: number; y: number; width: number; height: number };
   caption?: string;
   shape: 'rect' | 'oval' | 'rounded';
   objectFit: 'cover' | 'contain' | 'fill';
@@ -103,6 +124,12 @@ export interface TableElement extends BaseElement {
   fontFamily: string;
   fontSize: number;
   color: string;
+  /** Relative column widths, first column first (the rightmost in RTL); equal when absent. */
+  colWidths?: number[];
+  /** Lines around the cells (default on). */
+  cellBorders?: boolean;
+  /** Cell text alignment (default centre). */
+  cellAlign?: TextAlign;
 }
 
 export type DocElement =

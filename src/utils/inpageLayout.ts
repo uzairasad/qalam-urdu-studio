@@ -14,8 +14,10 @@ import type {
   PageSetup,
   PaperSize,
   PictureElement,
+  TableElement,
   TextAlign,
   TextElement,
+  TextRun,
 } from '../types/inpage.ts';
 import { dibToPngDataUrl } from './dibToPng.ts';
 import {
@@ -33,6 +35,7 @@ import {
   UNITS_PER_POINT,
 } from './inpageFormat.ts';
 import { isTallNastaliqFont } from './fonts.ts';
+import { hasFormatting, mergeRuns } from './richText.ts';
 import { decodeInPageBytes, normalizeInPageText, tidyParagraph } from './inpageText.ts';
 
 const PT_TO_MM = 25.4 / 72;
@@ -266,6 +269,101 @@ function borderOf(tags: Tags) {
   };
 }
 
+/** Decoded text in pieces, each from one style run (index into InPageText.runs, or -1). */
+export interface StyledText {
+  text: string;
+  unreadable: number;
+  pieces: { text: string; run: number }[];
+}
+
+/**
+ * Text of payload segments with the style run each character came from. Table rows put their
+ * cells side by side (tabs); then spacing is tidied exactly as tidyText does, per character.
+ */
+export function decodeStyled(text: InPageText, segments: { from: number; to: number; row?: boolean }[], separate = false): StyledText {
+  const pieces: { text: string; run: number }[] = [];
+  let unreadable = 0;
+  const runAt = (pos: number) => {
+    let lo = 0;
+    let hi = text.runs.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (text.runs[mid].start <= pos) lo = mid;
+      else hi = mid - 1;
+    }
+    return text.runs.length ? lo : -1;
+  };
+  segments.forEach((seg, si) => {
+    if (separate && si > 0) pieces.push({ text: '\n', run: pieces.length ? pieces[pieces.length - 1].run : -1 });
+    const first = pieces.length;
+    let pos = seg.from;
+    while (pos < seg.to) {
+      const r = runAt(pos);
+      const end = r >= 0 ? Math.min(seg.to, Math.max(pos + 1, text.runs[r].end)) : seg.to;
+      const d = decodeRange(text, pos, end, true);
+      unreadable += d.unreadable;
+      if (d.text) pieces.push({ text: d.text, run: r });
+      pos = end;
+    }
+    if (seg.row) {
+      // Cells are paragraphs: inside the row they become tabs, and the row ends the line.
+      const rowText = pieces.slice(first).map((p) => p.text).join('');
+      let offset = 0;
+      for (const p of pieces.slice(first)) {
+        let t = '';
+        for (let k = 0; k < p.text.length; k++) {
+          const at = offset + k;
+          t += p.text[k] === '\n' && /\S/.test(rowText.slice(at + 1).split('\n')[0] ?? '') ? '\t' : p.text[k];
+        }
+        offset += p.text.length;
+        p.text = t;
+      }
+      if (!rowText.endsWith('\n')) pieces.push({ text: '\n', run: pieces.length ? pieces[pieces.length - 1].run : -1 });
+    }
+  });
+  // Tidy, character by character: trim line ends, single spaces, one tab between cells, no
+  // blank lines at the start or end.
+  const chars: string[] = [];
+  const owner: number[] = [];
+  pieces.forEach((p, i) => {
+    for (const ch of p.text) {
+      chars.push(ch);
+      owner.push(i);
+    }
+  });
+  const keep = chars.map(() => true);
+  let lineStart = 0;
+  for (let i = 0; i <= chars.length; i++) {
+    if (i < chars.length && chars[i] !== '\n') continue;
+    let a = lineStart;
+    while (a < i && (chars[a] === ' ' || chars[a] === '\t')) keep[a++] = false;
+    let b = i - 1;
+    while (b >= a && (chars[b] === ' ' || chars[b] === '\t')) keep[b--] = false;
+    for (let k = a; k <= b; k++) {
+      if (chars[k] !== ' ' && chars[k] !== '\t') continue;
+      let e = k;
+      while (e + 1 <= b && (chars[e + 1] === ' ' || chars[e + 1] === '\t')) e++;
+      const tab = chars.slice(k, e + 1).indexOf('\t');
+      for (let m = k; m <= e; m++) keep[m] = tab >= 0 ? m === k + tab : m === k;
+      k = e;
+    }
+    lineStart = i + 1;
+  }
+  const kept = chars.map((c, i) => (keep[i] ? i : -1)).filter((i) => i >= 0);
+  let s0 = 0;
+  while (s0 < kept.length && chars[kept[s0]] === '\n') s0++;
+  let s1 = kept.length - 1;
+  while (s1 >= s0 && chars[kept[s1]] === '\n') s1--;
+  const outPieces: { text: string; run: number }[] = [];
+  for (const idx of kept.slice(s0, s1 + 1)) {
+    const run = pieces[owner[idx]].run;
+    const last = outPieces[outPieces.length - 1];
+    if (last && last.run === run) last.text += chars[idx];
+    else outPieces.push({ text: chars[idx], run });
+  }
+  return { text: outPieces.map((p) => p.text).join(''), unreadable, pieces: outPieces };
+}
+
 export interface LayoutResult {
   project: DocumentProject;
   unreadable: number;
@@ -303,6 +401,17 @@ export function buildLayout(
 
   const frameTexts = distributeStories(text);
   const sheet = readStyleSheet(stream, text.tableStart);
+  /** A style run's full style: defaults, its paragraph style, then its own tags. */
+  const runStyleCache = new Map<number, Tags>();
+  const runStyle = (index: number): Tags => {
+    let tags = runStyleCache.get(index);
+    if (!tags) {
+      const own = text.runs[index].tags;
+      tags = new Map([...sheet[0], ...(sheet[own.get(tagKey(0x00, 0x80)) ?? 0] ?? sheet[0]), ...own]);
+      runStyleCache.set(index, tags);
+    }
+    return tags;
+  };
   const defaultSize = (sheet[0].get(tagKey(0x7f, 0x00)) ?? 24000) / UNITS_PER_POINT;
   const setup = pageSetupFromGeometry(geometry);
   let unreadable = 0;
@@ -349,12 +458,11 @@ export function buildLayout(
     lineHeights: number[],
     geometry: Geometry,
     options: { paddingPt: number; columns: number; gutterPt: number; border: ReturnType<typeof borderOf>; fill: string; fitBox: boolean },
-    preset?: DecodedText
+    styled: StyledText
   ): TextElement | null => {
-    const decoded = preset ? [preset] : ranges.map(([a, b]) => decodeRange(text, a, b));
-    const body = decoded.map((d) => d.text).join('\n').replace(/^\n+|\n+$/g, '');
+    const body = styled.text;
     if (!body.trim() && options.border.borderStyle === 'none' && (options.fill === 'transparent' || options.fill === '#ffffff')) return null;
-    unreadable += decoded.reduce((n, d) => n + d.unreadable, 0);
+    unreadable += styled.unreadable;
     paragraphs += body.split(/\n+/).filter((p) => p.trim()).length;
 
     const style = dominantStyle(text, ranges, sheet);
@@ -370,6 +478,7 @@ export function buildLayout(
     // Keep InPage's line spacing; where the bundled font needs more room per line than that,
     // set it a little smaller instead of letting lines overlap.
     if (pitch > 0) fontSize = Math.min(fontSize, pitch / minLeading);
+    const sizeFactor = fontSize / Math.max(4, Math.min(400, (style.get(tagKey(0x7f, 0x00)) ?? defaultSize * UNITS_PER_POINT) / UNITS_PER_POINT));
     fontSize = Math.round(fontSize * 10) / 10;
     const lineHeight = pitch > 0 ? pitch / fontSize : rtl ? 1.85 : 1.3;
     const weight = style.get(tagKey(0x7f, 0x02)) ?? 400;
@@ -392,6 +501,27 @@ export function buildLayout(
     }
     const round = (v: number) => Math.round(v * 100) / 100;
     const textColor = color(style.get(tagKey(0x7f, 0x07)), '#000000');
+    const frameColor = textColor === 'transparent' ? '#000000' : textColor;
+
+    // Per-word formatting: each piece's own style, where it differs from the frame's.
+    const runs = mergeRuns(
+      styled.pieces.map((piece) => {
+        const tags = piece.run >= 0 ? runStyle(piece.run) : style;
+        const run: TextRun = { text: piece.text };
+        const pieceRtl = ARABIC.test(piece.text) || (rtl && !/[A-Za-z]/.test(piece.text));
+        const family = mapInPageFont(text.fonts[tags.get(tagKey(0x02, pieceRtl ? 0x02 : 0x01)) ?? -1], pieceRtl);
+        if (family !== fontFamily && /\S/.test(piece.text)) run.fontFamily = family;
+        const size = Math.round(((tags.get(tagKey(0x7f, 0x00)) ?? defaultSize * UNITS_PER_POINT) / UNITS_PER_POINT) * sizeFactor * 10) / 10;
+        if (Math.abs(size - fontSize) > 0.25 && /\S/.test(piece.text)) run.fontSize = size;
+        const bold = (tags.get(tagKey(0x7f, 0x02)) ?? 400) >= 600;
+        if (bold !== weight >= 600) run.bold = bold;
+        const italic = tags.get(tagKey(0x7f, 0x03)) === 1;
+        if (italic !== (style.get(tagKey(0x7f, 0x03)) === 1)) run.italic = italic;
+        const c = color(tags.get(tagKey(0x7f, 0x07)), frameColor);
+        if (c !== 'transparent' && c !== frameColor) run.color = c;
+        return run;
+      })
+    );
     return {
       id: nextId(),
       type: 'text',
@@ -407,7 +537,8 @@ export function buildLayout(
       letterSpacing: 0,
       scaleX: scale && scale >= 500 && scale <= 2000 && scale !== 1000 ? Math.round(scale / 10) : 100,
       paddingMm,
-      color: textColor === 'transparent' ? '#000000' : textColor,
+      color: frameColor,
+      ...(hasFormatting(runs) ? { runs } : {}),
       bold: weight >= 600,
       italic: style.get(tagKey(0x7f, 0x03)) === 1,
       underline: false,
@@ -421,15 +552,76 @@ export function buildLayout(
 
   /** A text frame: one element, or (single column, upright) a block per paragraph style. */
   /** Text of saved lines; a table row's cells go side by side, separated by tabs. */
-  const blockText = (blockLines: SavedLine[]): DecodedText => {
-    let raw = '';
-    let bad = 0;
-    for (const l of blockLines) {
-      const d = decodeRange(text, l.start, l.start + l.count, true);
-      bad += d.unreadable;
-      raw += l.row ? d.text.replace(/\n(?=[^\n]*\S)(?!$)/g, '\t').replace(/\n*$/, '\n') : d.text;
-    }
-    return { text: tidyText(raw.replace(/[ \t]*\t[ \t]*/g, '\t')), unreadable: bad };
+  const blockText = (blockLines: SavedLine[]): StyledText =>
+    decodeStyled(text, blockLines.map((l) => ({ from: l.start, to: l.start + l.count, row: l.row })));
+
+  /** A table row's cells that have width (merged-away cells are stored with none). */
+  const realCells = (l: SavedLine) => (l.cells ?? []).filter((c) => c.right - c.x > 0.5);
+
+  /**
+   * Table rows as a table: one column per cell of the fullest row, widths and position from
+   * InPage's cell edges (measured from the right of the text area), each cell's paragraph in it.
+   */
+  const makeTable = (
+    rows: SavedLine[],
+    area: { areaX: number; areaWidthPt: number; y: number; heightPt: number }
+  ): TableElement | null => {
+    const template = rows.reduce((best, r) => (realCells(r).length > realCells(best).length ? r : best), rows[0]);
+    const columns = [...realCells(template)].sort((a, b) => a.x - b.x);
+    const data: string[][] = rows.map((row) => {
+      const cellsText = decodeRange(text, row.start, row.start + row.count).text.split('\n');
+      const cells = new Array(columns.length).fill('');
+      realCells(row).forEach((cell, k) => {
+        let best = 0;
+        let bestOverlap = -Infinity;
+        columns.forEach((col, ci) => {
+          const overlap = Math.min(col.right, cell.right) - Math.max(col.x, cell.x);
+          if (overlap > bestOverlap) [best, bestOverlap] = [ci, overlap];
+        });
+        const value = (cellsText[k] ?? '').trim();
+        if (value) cells[best] = cells[best] ? `${cells[best]} ${value}` : value;
+      });
+      return cells;
+    });
+    if (!data.some((r) => r.some((c) => c))) return null;
+    // Column widths include half the gap to each neighbour.
+    const edges = columns.map((c, ci) => ({
+      from: ci === 0 ? c.x : (columns[ci - 1].right + c.x) / 2,
+      to: ci === columns.length - 1 ? c.right : (c.right + columns[ci + 1].x) / 2,
+    }));
+    const minX = edges[0].from;
+    const maxX = edges[edges.length - 1].to;
+    const range: [number, number] = [rows[0].start, rows[rows.length - 1].start + rows[rows.length - 1].count];
+    const style = dominantStyle(text, [range], sheet);
+    const rtl = data.some((r) => r.some((c) => ARABIC.test(c)));
+    const fontFamily = mapInPageFont(text.fonts[style.get(tagKey(0x02, rtl ? 0x02 : 0x01)) ?? -1], rtl);
+    const pitch = area.heightPt / rows.length;
+    const size = (style.get(tagKey(0x7f, 0x00)) ?? defaultSize * UNITS_PER_POINT) / UNITS_PER_POINT;
+    const fontSize = Math.round(Math.max(4, Math.min(size, pitch / (isTallNastaliqFont(fontFamily) ? 2.1 : 1.8))) * 10) / 10;
+    const c = color(style.get(tagKey(0x7f, 0x07)), '#000000');
+    paragraphs += data.flat().filter((v) => v).length;
+    frames++;
+    return {
+      id: nextId(),
+      type: 'table',
+      x: Math.round((area.areaX + ptToMm(area.areaWidthPt - maxX)) * 100) / 100,
+      y: Math.round(area.y * 100) / 100,
+      width: ptToMm(maxX - minX),
+      height: ptToMm(area.heightPt),
+      rows: data.length,
+      cols: columns.length,
+      data,
+      fontFamily,
+      fontSize,
+      color: c === 'transparent' ? '#000000' : c,
+      colWidths: edges.map((e) => Math.round((e.to - e.from) * 100) / 100),
+      // InPage's cell border settings aren't decoded; its own output of these tables shows none.
+      cellBorders: false,
+      cellAlign: ALIGN[style.get(tagKey(0x7f, 0x80)) ?? (rtl ? 1 : 0)] ?? (rtl ? 'right' : 'left'),
+      backgroundColor: 'transparent',
+      borderStyle: 'none',
+      borderWidth: 0,
+    };
   };
 
   /**
@@ -461,35 +653,78 @@ export function buildLayout(
     const widthPt = w / UNITS_PER_POINT;
     const insetPt = ft?.columnWidthPt ? Math.max(0, (widthPt - ft.columnWidthPt * columns - gutterPt * (columns - 1)) / 2) : 2;
 
-    const lines = ft && ft.lines.length === 1 ? ft.lines[0] : null;
-    if (lines && lines.length && columns === 1 && !rot.rotation) {
+    // Upright frames whose lines are known are laid out line by line, column by column.
+    const parts = ft && !rot.rotation && ft.lines.length && ft.lines.length <= columns && ft.lines.every((p) => p.length) ? ft.lines : null;
+    if (parts) {
       const out: DocElement[] = [];
       if (border.borderStyle !== 'none' || (fill !== 'transparent' && fill !== '#ffffff')) {
         out.push({ id: nextId(), type: 'graphic', x: rot.x, y: rot.y, width: mm(w), height: mm(h), shape: 'rect', fillColor: fill, ...border });
       }
       const none = { borderStyle: 'none' as const, borderWidth: 0, borderColor: '#000000' };
-      const textWidthPt = ft!.columnWidthPt && ft!.columnWidthPt > 0 ? ft!.columnWidthPt : widthPt - 2 * insetPt;
-      let offset = 0;
-      let i = 0;
-      while (i < lines.length) {
-        const key = styleKeyAt(lines[i].start);
-        let j = i;
-        let blockHeight = 0;
-        do blockHeight += lines[j++].heightPt;
-        while (!overlapped && j < lines.length && styleKeyAt(lines[j].start) === key);
-        const from = lines[i].start;
-        const to = lines[j - 1].start + lines[j - 1].count;
-        const el = makeText(
-          [[from, to]],
-          lines.slice(i, j).map((l) => l.heightPt),
-          { x: rot.x + ptToMm(insetPt), y: rot.y + ptToMm(insetPt + offset), width: ptToMm(textWidthPt), height: ptToMm(blockHeight) },
-          { paddingPt: 0, columns: 1, gutterPt: 0, border: none, fill: 'transparent', fitBox: true },
-          blockText(lines.slice(i, j))
-        );
-        if (el) out.push(el);
-        offset += blockHeight;
-        i = j;
-      }
+      const textWidthPt = ft!.columnWidthPt && ft!.columnWidthPt > 0 ? ft!.columnWidthPt : (widthPt - 2 * insetPt - gutterPt * (columns - 1)) / columns;
+      const frameText = ft!.ranges.map(([a2, b2]) => decodeRange(text, a2, b2).text).join('');
+      const frameRtl = ARABIC.test(frameText) || !/[A-Za-z]/.test(frameText);
+      parts.forEach((lines, k) => {
+        // Urdu columns run right to left.
+        const colIndex = frameRtl ? columns - 1 - k : k;
+        const colX = rot.x + ptToMm(insetPt + colIndex * (textWidthPt + gutterPt));
+        // A line narrower than its column wraps around an object; its saved extent says where.
+        const wrapped = (l: SavedLine) => l.availablePt !== undefined && l.availablePt > 0 && l.availablePt < textWidthPt - 2;
+        let offset = 0;
+        let i = 0;
+        while (i < lines.length) {
+          // A run of table rows (two or more cells each) becomes a table.
+          if (realCells(lines[i]).length >= 2) {
+            let j = i;
+            let tableHeight = 0;
+            while (j < lines.length && realCells(lines[j]).length >= 2) tableHeight += lines[j++].heightPt;
+            const table = makeTable(lines.slice(i, j), {
+              areaX: colX,
+              areaWidthPt: textWidthPt,
+              y: rot.y + ptToMm(insetPt + offset),
+              heightPt: tableHeight,
+            });
+            if (table) out.push(table);
+            offset += tableHeight;
+            i = j;
+            continue;
+          }
+          const key = styleKeyAt(lines[i].start);
+          let j = i;
+          let blockHeight = 0;
+          const single = overlapped || wrapped(lines[i]);
+          do blockHeight += lines[j++].heightPt;
+          while (
+            !single &&
+            j < lines.length &&
+            !wrapped(lines[j]) &&
+            styleKeyAt(lines[j].start) === key &&
+            realCells(lines[j]).length < 2
+          );
+          const from = lines[i].start;
+          const to = lines[j - 1].start + lines[j - 1].count;
+          let xPt = 0;
+          let wPt = textWidthPt;
+          const line = lines[i];
+          if (wrapped(line) && line.availablePt) {
+            // The space beside the obstacle: the side the text was set on.
+            const ext = line.extent;
+            const leftSide = ext ? ext.x < textWidthPt - ext.right : false;
+            wPt = line.availablePt;
+            xPt = leftSide ? Math.max(0, ext?.x ?? 0) : textWidthPt - line.availablePt;
+          }
+          const el = makeText(
+            [[from, to]],
+            lines.slice(i, j).map((l) => l.heightPt),
+            { x: colX + ptToMm(xPt), y: rot.y + ptToMm(insetPt + offset), width: ptToMm(wPt), height: ptToMm(blockHeight) },
+            { paddingPt: 0, columns: 1, gutterPt: 0, border: none, fill: 'transparent', fitBox: true },
+            blockText(lines.slice(i, j))
+          );
+          if (el) out.push(el);
+          offset += blockHeight;
+          i = j;
+        }
+      });
       if (out.length) frames++;
       return out;
     }
@@ -498,7 +733,17 @@ export function buildLayout(
       ft?.ranges ?? [],
       (ft?.lines ?? []).flat().map((l) => l.heightPt),
       { x: rot.x, y: rot.y, width: mm(w), height: mm(h), rotation: rot.rotation },
-      { paddingPt: insetPt, columns, gutterPt, border, fill, fitBox: false }
+      { paddingPt: insetPt, columns, gutterPt, border, fill, fitBox: false },
+      decodeStyled(
+        text,
+        (ft?.lines.length ? ft.lines.flat() : []).length
+          ? ft!.lines.flatMap((part, i) => [
+              ...(i > 0 ? [{ from: part[0]?.start ?? 0, to: part[0]?.start ?? 0 }] : []),
+              ...part.map((l) => ({ from: l.start, to: l.start + l.count, row: l.row })),
+            ])
+          : (ft?.ranges ?? []).map(([from, to]) => ({ from, to })),
+        !ft?.lines.length
+      )
     );
     if (el) frames++;
     return el ? [el] : [];
@@ -561,7 +806,30 @@ export function buildLayout(
       const src = bytes ? imageDataUrl(bytes) : null;
       if (src) {
         pictures++;
-        return { ...base, type: 'picture', imageSrc: src, shape: shapeCode === 1 ? 'oval' : 'rect', objectFit: 'contain' };
+        // Placement inside the frame: offset (05.01/02, from inside the border), natural size
+        // (05.03/04) and scale (05.08/09, thousandths).
+        const natW = tags.get(tagKey(0x05, 0x03));
+        const natH = tags.get(tagKey(0x05, 0x04));
+        const scaleX = tags.get(tagKey(0x05, 0x08)) ?? 1000;
+        const scaleY = tags.get(tagKey(0x05, 0x09)) ?? 1000;
+        const inset = base.borderStyle === 'none' ? 0 : base.borderWidth;
+        const imageBox =
+          natW && natH && natW > 0 && natH > 0 && scaleX > 0 && scaleY > 0
+            ? {
+                x: ptToMm((tags.get(tagKey(0x05, 0x01)) ?? 0) / UNITS_PER_POINT + inset),
+                y: ptToMm((tags.get(tagKey(0x05, 0x02)) ?? 0) / UNITS_PER_POINT + inset),
+                width: ptToMm(((natW / UNITS_PER_POINT) * scaleX) / 1000),
+                height: ptToMm(((natH / UNITS_PER_POINT) * scaleY) / 1000),
+              }
+            : undefined;
+        return {
+          ...base,
+          type: 'picture',
+          imageSrc: src,
+          shape: shapeCode === 1 ? 'oval' : 'rect',
+          objectFit: 'contain',
+          ...(imageBox ? { imageBox } : {}),
+        };
       }
     }
     const fill = color(tags.get(tagKey(0x7e, 0x0e)), 'transparent');
