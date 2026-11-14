@@ -6,13 +6,18 @@
 #              a release
 # Code signing uses repository secrets when they're set and is skipped when they aren't; see
 # docs/SIGNING.md. The Android key is set; Windows and macOS need paid certificates.
-# A pushed tag vX.Y.Z (matching package.json's version) publishes a GitHub release with them and
-# SHA256SUMS.txt. Run by hand (Actions > Release > Run workflow) it only builds and keeps the
-# files as workflow artifacts; nothing is published. Tick "android_only" to build just the APK.
+# Releasing: push a commit to main that sets a new version in package.json. If tag vX.Y.Z doesn't
+# exist yet, the plan job creates it on that commit and the release is built and published with
+# SHA256SUMS.txt. (No tag push needed, so it works where tag pushes aren't allowed; pushing a
+# tag vX.Y.Z yourself still works too, and whichever run comes second skips.)
+# Run by hand (Actions > Release > Run workflow) it only builds and keeps the files as workflow
+# artifacts; nothing is published. Tick "android_only" to build just the APK.
 name: Release
 
 on:
   push:
+    branches: [main]
+    paths: [package.json, .github/workflows/release.yml]
     tags: ["v*"]
   workflow_dispatch:
     inputs:
@@ -24,23 +29,59 @@ on:
 permissions:
   contents: read
 
+# One release run at a time, so a tag push and the version bump it belongs to never both publish.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check-version:
+  # Decides what this run does: `build` (anything at all) and `tag` (the release to publish, or
+  # empty for a build-only run). On main it creates the tag; pushed with GITHUB_TOKEN, that tag
+  # doesn't start another run.
+  plan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      build: ${{ steps.plan.outputs.build }}
+      tag: ${{ steps.plan.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
-      - name: Tag matches package.json
-        if: startsWith(github.ref, 'refs/tags/')
+      - id: plan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           v=$(node -p "require('./package.json').version")
-          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} but package.json says $v"; exit 1; }
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "::error::tag $GITHUB_REF_NAME but package.json says $v"; exit 1; }
+            if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "Release $GITHUB_REF_NAME already exists (made from main): nothing to do"
+              echo "build=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "build=true" >> "$GITHUB_OUTPUT"
+              echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+            fi
+          elif [ "$GITHUB_EVENT_NAME" = push ]; then
+            if git ls-remote --exit-code --tags origin "refs/tags/v$v" >/dev/null; then
+              echo "v$v is already tagged: no new version, nothing to release"
+              echo "build=false" >> "$GITHUB_OUTPUT"
+            else
+              git tag "v$v" "$GITHUB_SHA"
+              git push origin "v$v"
+              echo "Tagged v$v on $GITHUB_SHA"
+              echo "build=true" >> "$GITHUB_OUTPUT"
+              echo "tag=v$v" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
 
   desktop:
-    needs: check-version
-    if: ${{ !inputs.android_only }}
+    needs: plan
+    if: needs.plan.outputs.build == 'true' && !inputs.android_only
     permissions:
       contents: write # uploads to the draft release
     strategy:
@@ -144,8 +185,8 @@ jobs:
           tauriScript: npx tauri
           args: --target ${{ matrix.target }} ${{ steps.signing.outputs.args }}
           # On a tag: attach to a draft release that the publish job finalises.
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          releaseName: Qalam Urdu Studio ${{ github.ref_name }}
+          tagName: ${{ needs.plan.outputs.tag }}
+          releaseName: Qalam Urdu Studio ${{ needs.plan.outputs.tag }}
           releaseBody: See CHANGELOG.md. Verify downloads against SHA256SUMS.txt.
           releaseDraft: true
           prerelease: false
@@ -162,11 +203,11 @@ jobs:
           Compress-Archive -Path $dir -DestinationPath "$dir-windows-x64.zip"
 
       - name: Attach portable zip
-        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/')
+        if: runner.os == 'Windows' && needs.plan.outputs.tag != ''
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.ref_name }}" (Get-ChildItem *-portable-windows-x64.zip).FullName --clobber
+        run: gh release upload "${{ needs.plan.outputs.tag }}" (Get-ChildItem *-portable-windows-x64.zip).FullName --clobber
 
       - uses: actions/upload-artifact@v4
         with:
@@ -183,7 +224,8 @@ jobs:
           retention-days: 14
 
   android:
-    needs: check-version
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
     continue-on-error: true
     permissions:
       contents: write
@@ -246,10 +288,11 @@ jobs:
           fi
           ls -l "$out"
       - name: Attach APK
-        if: startsWith(github.ref, 'refs/tags/')
+        if: needs.plan.outputs.tag != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$GITHUB_REF_NAME" Qalam-Urdu-Studio-*-android-arm64.apk --clobber
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: gh release upload "$TAG" Qalam-Urdu-Studio-*-android-arm64.apk --clobber
       - uses: actions/upload-artifact@v4
         with:
           name: qalam-android
@@ -258,22 +301,23 @@ jobs:
 
   publish:
     # Waits for the desktop builds; Android is best-effort (attached if it finished in time).
-    needs: [desktop, android]
-    if: always() && startsWith(github.ref, 'refs/tags/') && needs.desktop.result == 'success'
+    needs: [plan, desktop, android]
+    if: always() && needs.plan.outputs.tag != '' && needs.desktop.result == 'success'
     permissions:
       contents: write
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.plan.outputs.tag }}
     steps:
       - name: SHA256SUMS.txt
         run: |
           mkdir assets && cd assets
-          gh release download "$GITHUB_REF_NAME" --pattern '*' --skip-existing
+          gh release download "$TAG" --pattern '*' --skip-existing
           rm -f SHA256SUMS.txt *.sig
           sha256sum * > SHA256SUMS.txt
           cat SHA256SUMS.txt
-          gh release upload "$GITHUB_REF_NAME" SHA256SUMS.txt --clobber
+          gh release upload "$TAG" SHA256SUMS.txt --clobber
       - name: Publish the release
-        run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+        run: gh release edit "$TAG" --draft=false --latest

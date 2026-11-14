@@ -75,8 +75,10 @@ before dev builds dropped dependency debug info in `Cargo.toml`).
 ## Releasing
 
 1. Bump `version` in `package.json` and `[workspace.package]` in `Cargo.toml`; add a CHANGELOG entry.
-2. Commit, `git tag vX.Y.Z`, `git push origin main vX.Y.Z`.
-3. `release.yml` builds all platforms, signs the APK (secrets `ANDROID_KEYSTORE_BASE64`,
+2. Commit and push to `main` (directly, or by merging a PR). Don't push tags: cloud sessions
+   aren't allowed to, and they aren't needed. `release.yml`'s `plan` job sees a version with no
+   `vX.Y.Z` tag yet, creates the tag on that commit (pushing one by hand still works too).
+3. `release.yml` then builds all platforms, signs the APK (secrets `ANDROID_KEYSTORE_BASE64`,
    `ANDROID_KEYSTORE_PASSWORD`, alias `qalam`), uploads SHA256SUMS and publishes.
    Actions → Release → Run workflow with `android_only` is a quick APK-only check.
 
