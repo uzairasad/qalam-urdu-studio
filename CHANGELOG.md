@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Android: the APK is now a signed release build (`-android-arm64.apk`), so future versions
+- Android: the APK is now a signed release build (`-android-arm64.apk`, about 11 MB), so future versions
   install as updates. It's signed with a different key than earlier test builds, so uninstall
   0.1.x before installing it.
 - The title bar, status bar, toolbox and About box show the real version instead of "v1.0".
