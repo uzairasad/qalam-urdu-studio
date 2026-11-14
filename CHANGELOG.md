@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 — 2026-11-14
+
+- Android: the experimental APK is now about 23 MB instead of 490 MB. It's built for 64-bit ARM
+  phones only (nearly every phone since 2017), stripped of debug information and size-optimised.
+
 ## 0.1.1 — 2026-11-13
 
 - Android: the app now builds for Android. Native printing is desktop-only. On phones and tablets,
