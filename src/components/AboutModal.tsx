@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Info } from 'lucide-react';
+import { X, Type, Keyboard, LayoutTemplate, FileInput, FileOutput, WifiOff, type LucideIcon } from 'lucide-react';
 import { QalamAppLogo } from './DtpIcons';
 import { APP_AUTHOR, APP_VERSION, type ProjectLink } from '../appInfo';
 import { isNativeApp, openProjectLink } from '../platform/native';
@@ -10,6 +10,15 @@ const LINKS: { link: ProjectLink; label: string }[] = [
   { link: 'source', label: 'Source code' },
   { link: 'license', label: 'License' },
   { link: 'notices', label: 'Third-party notices' },
+];
+
+const FEATURES: [LucideIcon, string][] = [
+  [Type, 'Nastaliq, Naskh and 13 more fonts'],
+  [Keyboard, 'Phonetic, Monotype and Muqtadira keyboards'],
+  [LayoutTemplate, 'Frames, columns, tables and master pages'],
+  [FileInput, 'Opens and saves InPage files'],
+  [FileOutput, 'PDF, Word, PNG and HTML export'],
+  [WifiOff, 'Works offline, on every device'],
 ];
 
 interface AboutModalProps {
@@ -28,99 +37,93 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, updates
 
   if (!isOpen) return null;
 
+  const platform = isNativeApp()
+    ? /Android/i.test(navigator.userAgent)
+      ? 'Android app'
+      : 'Desktop app'
+    : 'Web app';
+
   return (
     <div className="fixed inset-0 z-50 safe-overlay flex items-center justify-center bg-black/45 backdrop-blur-[1px] p-4 short:p-2 select-none">
       <div
         role="dialog"
         aria-modal="true"
         aria-label="About Qalam Urdu Studio"
-        className="max-w-md w-full max-h-full flex flex-col text-slate-800 shadow-2xl bg-white border border-slate-200 rounded-xl overflow-hidden font-modern"
+        className="relative max-w-md w-full max-h-full flex flex-col text-slate-800 shadow-2xl bg-white border border-slate-200 rounded-2xl overflow-hidden font-modern"
         dir="ltr"
       >
-        {/* Title Bar */}
-        <div className="flex items-center justify-between text-xs font-semibold bg-slate-900 text-white px-3.5 py-2.5">
-          <div className="flex items-center gap-1.5">
-            <Info className="w-3.5 h-3.5 shrink-0" />
-            <span>About Qalam Urdu Studio</span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="w-6 h-6 hover:bg-red-600 rounded text-slate-300 hover:text-white flex items-center justify-center transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-2.5 top-2.5 z-10 w-8 h-8 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 flex items-center justify-center transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
 
         {/* Content (scrolls when the window is short, e.g. at 150-200% display scaling) */}
         <div className="min-h-0 overflow-y-auto">
-        <div className="p-4 short:p-3 flex gap-4 text-xs">
-          <QalamAppLogo className="w-16 h-16 shrink-0 drop-shadow-md" />
-
-          <div className="space-y-2">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Qalam Urdu Studio</h2>
-              <p className="text-[11px] text-slate-600">
-                Desktop Publishing Suite for Urdu, Arabic & Nastaliq
-              </p>
-              <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                Version {APP_VERSION} · {isNativeApp() ? 'Desktop app' : 'Web app'}
-              </p>
-              <p className="text-[11px] text-slate-700 mt-1">
-                Created by <span className="font-semibold text-slate-900">{APP_AUTHOR}</span>
-              </p>
+          <div className="px-5 pt-6 pb-4 short:pt-4 flex flex-col items-center text-center">
+            <QalamAppLogo className="w-16 h-16 drop-shadow-md" />
+            <h2 className="mt-3 text-lg font-bold text-slate-900 tracking-tight">Qalam Urdu Studio</h2>
+            <p className="text-xs text-slate-500">Desktop publishing for Urdu, Arabic and English</p>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px]">
+              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold tabular-nums">
+                Version {APP_VERSION}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{platform}</span>
             </div>
+            <p className="mt-2 text-xs text-slate-600">
+              Created by <span className="font-semibold text-slate-900">{APP_AUTHOR}</span>
+            </p>
 
-            <div
-              className="border px-3 py-2.5 text-[12px] text-slate-700 leading-[2.2] font-nastaliq text-right bg-slate-50 border-slate-200 rounded-lg"
-              dir="rtl"
-            >
-              قلم اردو سٹوڈیو اخبارات، رسائل، کتب اور سرکاری دستاویزات کی خطِ نستعلیق، نسخ اور رقعہ میں پیشہ ورانہ کمپوزنگ و اشاعت کا جدید سٹوڈیو ہے۔
-            </div>
+            <p className="mt-3 text-[13px] text-slate-700 leading-[2.3] font-nastaliq" dir="rtl">
+              اخبارات، رسائل اور کتب کی نستعلیق میں اشاعت
+            </p>
+          </div>
 
-            <div className="text-[10px] text-slate-500 space-y-0.5">
-              <p>• 15 Urdu, Arabic & Latin fonts, bundled for offline use (Nastaliq, Gulzar, Amiri, Ruqaa, Kufi)</p>
-              <p>• Phonetic, Monotype & Muqtadira Urdu keyboard layouts</p>
-              <p>• Multi-column frames, table builder, snap grid & character scaling</p>
-              <p>• Open &amp; Save .qlm / .inp / Word (.docx) / PDF / TXT, Export PDF, HTML, PNG &amp; Web App</p>
-            </div>
+          <ul className="mx-5 grid grid-cols-2 gap-x-3 gap-y-2 text-[11.5px] text-slate-700">
+            {FEATURES.map(([Icon, label]) => (
+              <li key={label} className="flex items-center gap-2 min-w-0">
+                <span className="w-6 h-6 shrink-0 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Icon className="w-3.5 h-3.5" />
+                </span>
+                <span className="leading-tight">{label}</span>
+              </li>
+            ))}
+          </ul>
 
-            <div className="text-[10px] text-slate-600 leading-relaxed border-t border-slate-200 pt-2">
-              <p>
-                Free and open-source software under the{' '}
-                <span className="font-semibold text-slate-800">GNU General Public License v3.0</span>{' '}
-                or later: you can use, share and change it, and versions you share stay open source.
-                Bundled fonts are under the SIL Open Font License.
-              </p>
-              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                {LINKS.map(({ link, label }) => (
-                  <button
-                    key={link}
-                    type="button"
-                    onClick={() => void openProjectLink(link)}
-                    className="text-blue-700 hover:text-blue-900 hover:underline font-medium"
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+          <div className="mx-5 mt-4 pt-3 border-t border-slate-200 text-center">
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Free and open source under the GNU GPL v3.0 or later. Bundled fonts are under the SIL
+              Open Font License.
+            </p>
+            <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+              {LINKS.map(({ link, label }) => (
+                <button
+                  key={link}
+                  type="button"
+                  onClick={() => void openProjectLink(link)}
+                  className="px-2.5 py-1 rounded-full border border-slate-200 text-[11px] font-medium text-blue-700 hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+          </div>
+
+          <div className="pt-3">
+            <UpdatesSection updates={updates} />
           </div>
         </div>
 
-        <UpdatesSection updates={updates} />
-        </div>
-
         {/* Footer */}
-        <div className="px-4 py-2 flex items-center justify-between gap-3 bg-slate-50 border-t border-slate-200">
-          <span className="text-[10px] text-slate-500">
-            © 2026 {APP_AUTHOR} · GPL-3.0-or-later
-          </span>
+        <div className="px-5 py-3 flex items-center justify-between gap-3 bg-slate-50 border-t border-slate-200">
+          <span className="text-[11px] text-slate-500">© 2026 {APP_AUTHOR}</span>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-xs transition-colors"
+            className="px-6 py-1.5 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xs transition-colors"
           >
             OK
           </button>

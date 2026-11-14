@@ -73,7 +73,7 @@ export const UpdatesSection: React.FC<{ updates: Updates }> = ({ updates }) => {
   const found = availableUpdate(status);
 
   return (
-    <div className="mx-4 mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px]">
+    <div className="mx-5 mb-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px]">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="min-w-0 flex-1">
           {status.kind === 'idle' && <span className="text-slate-500">You have version {APP_VERSION}.</span>}

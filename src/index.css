@@ -325,3 +325,10 @@ textarea:focus-visible {
 :root[data-theme='dark'] textarea {
   color-scheme: dark;
 }
+/* Dark blue text on dark chrome: lighter, for contrast (pages keep their colours). */
+:root[data-theme='dark'] :where(.text-blue-700, .text-blue-800, .text-indigo-700) {
+  color: #93c5fd;
+}
+:root[data-theme='dark'] :is(.page-background, .print-page-view, .keep-colors) :where(.text-blue-700, .text-blue-800, .text-indigo-700) {
+  color: revert-layer;
+}

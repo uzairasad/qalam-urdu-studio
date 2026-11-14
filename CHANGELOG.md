@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.9 — 2026-11-15
+
+- **Tidier About box**, made for phones: the icon, name, version and platform centred on top
+  (it said "Desktop app" on Android), a short up-to-date feature list, links as buttons.
+- Dark theme: dark blue text (links, labels) is lighter, so it reads clearly.
+
 ## 0.1.8 — 2026-11-15
 
 - **Per-word formatting.** Text frames can mix fonts, sizes, bold, italic and colours word by word.
