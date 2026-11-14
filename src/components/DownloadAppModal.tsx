@@ -1,4 +1,5 @@
 import React from 'react';
+import { APP_VERSION } from '../appInfo';
 import {
   X,
   Download,
@@ -44,7 +45,7 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
 
   const handleDownloadOfflineHTML = () => {
     const a = document.createElement('a');
-    a.href = '/Qalam_Urdu_Studio.html';
+    a.href = `${import.meta.env.BASE_URL}Qalam_Urdu_Studio.html`;
     a.download = 'Qalam_Urdu_Studio.html';
     document.body.appendChild(a);
     a.click();
@@ -66,7 +67,7 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
         <div className="px-3.5 py-2.5 flex items-center justify-between text-xs font-semibold bg-slate-900 text-white">
           <div className="flex items-center gap-1.5">
             <Globe className="w-3.5 h-3.5 text-blue-400" />
-            <span>Add as Web App, Single HTML & Export — v1.0</span>
+            <span>Add as Web App, Single HTML & Export — v{APP_VERSION}</span>
           </div>
           <button
             type="button"

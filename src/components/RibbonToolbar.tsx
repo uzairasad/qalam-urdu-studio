@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { APP_VERSION } from '../appInfo';
 import { isNativeApp } from '../platform/native';
 import {
   Bold,
@@ -1992,7 +1993,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                     className={ribbonBtnClass(false)}
                   >
                     <Info className="w-3.5 h-3.5 text-sky-600" />
-                    <span>About v1.0</span>
+                    <span>About v{APP_VERSION}</span>
                   </button>
                 </div>
               )}

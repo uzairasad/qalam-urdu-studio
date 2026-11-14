@@ -3,46 +3,51 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { woff2Only } from './scripts/woff2-only.mjs';
 
 // Set by the Tauri CLI when it builds or runs the desktop/mobile app (src-tauri/).
 const isNativeApp = Boolean(process.env.TAURI_ENV_PLATFORM);
+// Where the web app is served from: '/' normally, '/<repo>/' on a GitHub Pages project site.
+const base = process.env.BASE_PATH || '/';
 
 export default defineConfig(() => {
   return {
+    base,
     // Keep Tauri's Rust compiler output visible during `npm run app:dev`.
     clearScreen: !isNativeApp,
     plugins: [
       react(),
       tailwindcss(),
+      woff2Only(),
       // No service worker in the native app: its files are already local.
       !isNativeApp && VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
-          id: '/',
+          id: './',
           name: 'Qalam Urdu Studio',
           short_name: 'Qalam Studio',
-          description: 'Qalam Urdu Studio for Windows - Nastaliq typesetting, multi-layout Urdu keyboards, and print layout publishing.',
+          description: 'Urdu Nastaliq desktop publishing by Uzair Asad: typeset pages with Urdu keyboards, multi-column layout and PDF/Word export. Works offline.',
           theme_color: '#0f172a',
           background_color: '#eef1f6',
           display: 'standalone',
-          start_url: '/',
-          scope: '/',
+          start_url: './',
+          scope: './',
           icons: [
             {
-              src: '/pwa-192x192.png',
+              src: 'pwa-192x192.png',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-512x512.png',
+              src: 'pwa-512x512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-maskable-512x512.png',
+              src: 'pwa-maskable-512x512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',

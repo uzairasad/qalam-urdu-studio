@@ -1,6 +1,8 @@
 import React from 'react';
 import { X, Info } from 'lucide-react';
 import { QalamBrandEmblem } from './DtpIcons';
+import { APP_AUTHOR, APP_VERSION } from '../appInfo';
+import { isNativeApp } from '../platform/native';
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -46,7 +48,10 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                 Desktop Publishing Suite for Urdu, Arabic & Nastaliq
               </p>
               <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                Version 1.0
+                Version {APP_VERSION} · {isNativeApp() ? 'Desktop app' : 'Web app'}
+              </p>
+              <p className="text-[11px] text-slate-700 mt-1">
+                Created by <span className="font-semibold text-slate-900">{APP_AUTHOR}</span>
               </p>
             </div>
 
@@ -58,7 +63,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             </div>
 
             <div className="text-[10px] text-slate-500 space-y-0.5">
-              <p>• 15 Urdu, Arabic & Latin fonts (Nastaliq, Gulzar, Amiri, Ruqaa, Kufi)</p>
+              <p>• 15 Urdu, Arabic & Latin fonts, bundled for offline use (Nastaliq, Gulzar, Amiri, Ruqaa, Kufi)</p>
               <p>• Phonetic, Monotype & Muqtadira Urdu keyboard layouts</p>
               <p>• Multi-column frames, table builder, snap grid & character scaling</p>
               <p>• Open &amp; Save .qlm / .inp / Word (.docx) / PDF / TXT, Export PDF, HTML, PNG &amp; Web App</p>
@@ -67,7 +72,10 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 flex justify-end bg-slate-50 border-t border-slate-200">
+        <div className="px-4 py-2 flex items-center justify-between gap-3 bg-slate-50 border-t border-slate-200">
+          <span className="text-[10px] text-slate-500">
+            © {new Date().getFullYear()} {APP_AUTHOR}
+          </span>
           <button
             type="button"
             onClick={onClose}

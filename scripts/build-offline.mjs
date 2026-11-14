@@ -5,17 +5,18 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { woff2Only } from './woff2-only.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, '..');
 
 async function bundle() {
-  console.log('Building standalone single-file Qalam Urdu Studio Windows application...');
+  console.log('Building the single-file offline Qalam Urdu Studio (Qalam_Urdu_Studio.html)...');
   await build({
     root,
     configFile: false,
-    plugins: [react(), tailwindcss(), viteSingleFile()],
+    plugins: [react(), tailwindcss(), woff2Only(), viteSingleFile()],
     resolve: {
       alias: {
         '@': root,
@@ -43,15 +44,14 @@ async function bundle() {
     html = html.replace(/<link[^>]*href="\.?\/favicon\.ico"[^>]*>\s*/gi, '');
     fs.writeFileSync(sourceHtml, html, 'utf8');
 
-    // Copy to public/Qalam_Urdu_Studio.html so users can download it directly from the app
-    const publicTarget = path.resolve(root, 'public/Qalam_Urdu_Studio.html');
-    fs.copyFileSync(sourceHtml, publicTarget);
-    console.log('Successfully generated public/Qalam_Urdu_Studio.html');
-
-    // Also copy to root as Qalam_Urdu_Studio.html
-    const rootTarget = path.resolve(root, 'Qalam_Urdu_Studio.html');
-    fs.copyFileSync(sourceHtml, rootTarget);
-    console.log('Successfully generated root Qalam_Urdu_Studio.html');
+    // Into dist/ (built just before this by `vite build`), where the web app's "Download
+    // Single-File App" button fetches it. Written here rather than kept in public/ so it is
+    // always this build's copy, and so the native app bundles don't carry it.
+    const distTarget = path.resolve(root, 'dist/Qalam_Urdu_Studio.html');
+    if (fs.existsSync(path.dirname(distTarget))) {
+      fs.copyFileSync(sourceHtml, distTarget);
+      console.log('Generated dist/Qalam_Urdu_Studio.html');
+    }
   }
 }
 

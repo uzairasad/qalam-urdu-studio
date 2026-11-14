@@ -1,0 +1,61 @@
+# Publishes the GitHub Pages site on every push to main:
+#   /       the project page (site/), with download links to the latest release
+#   /app/   the web app (PWA), plus app/Qalam_Urdu_Studio.html, the single-file offline version
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "src/**"
+      - "public/**"
+      - "scripts/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - id: pages
+        uses: actions/configure-pages@v5
+      - run: npm ci
+      - name: Build the web app under /app/
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}/app/
+        run: npm run build
+      - name: Assemble the site
+        run: |
+          mkdir _site
+          cp -r site/. _site/
+          cp -r dist _site/app
+      - uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

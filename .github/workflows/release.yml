@@ -1,9 +1,11 @@
 # Builds the downloads on GitHub's servers from this repository's source:
 #   Windows  - setup.exe (NSIS), .msi, and a portable .zip
-#   macOS    - .dmg for Apple Silicon and for Intel (unsigned: first launch is right-click > Open)
+#   macOS    - .dmg for Apple Silicon and for Intel
 #   Linux    - .AppImage, .deb, .rpm
-#   Android  - experimental debug-signed .apk for 64-bit ARM (sideload); a failure here never
-#              blocks a release
+#   Android  - release-signed .apk for 64-bit ARM phones (sideload); a failure here never blocks
+#              a release
+# Code signing uses repository secrets when they're set and is skipped when they aren't; see
+# docs/SIGNING.md. The Android key is set; Windows and macOS need paid certificates.
 # A pushed tag vX.Y.Z (matching package.json's version) publishes a GitHub release with them and
 # SHA256SUMS.txt. Run by hand (Actions > Release > Run workflow) it only builds and keeps the
 # files as workflow artifacts; nothing is published. Tick "android_only" to build just the APK.
@@ -83,14 +85,47 @@ jobs:
 
       - run: npm ci
 
+      # Signs only when the secrets exist (docs/SIGNING.md); otherwise builds unsigned.
+      - name: Code signing setup
+        id: signing
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          AZURE_CERT_PROFILE: ${{ vars.AZURE_CERT_PROFILE }}
+        run: |
+          export_vars() { for v in "$@"; do [ -n "${!v}" ] && echo "$v=${!v}" >> "$GITHUB_ENV"; done; return 0; }
+          if [ "$RUNNER_OS" = macOS ] && [ -n "$APPLE_CERTIFICATE" ]; then
+            echo "Signing (and notarizing, if APPLE_ID is set) the macOS app"
+            export_vars APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
+          elif [ "$RUNNER_OS" = Windows ] && [ -n "$AZURE_CLIENT_ID" ]; then
+            echo "Signing the Windows app with Azure Trusted Signing"
+            cargo install trusted-signing-cli --locked
+            export_vars AZURE_CLIENT_ID AZURE_CLIENT_SECRET AZURE_TENANT_ID
+            node -e "require('fs').writeFileSync('signing.json', JSON.stringify({bundle:{windows:{signCommand:
+              'trusted-signing-cli -e ' + process.env.AZURE_SIGNING_ENDPOINT + ' -a ' + process.env.AZURE_SIGNING_ACCOUNT +
+              ' -c ' + process.env.AZURE_CERT_PROFILE + ' -d \"Qalam Urdu Studio\" %1'}}}))"
+            echo "args=--config signing.json" >> "$GITHUB_OUTPUT"
+          else
+            echo "No signing secrets for $RUNNER_OS: building unsigned"
+          fi
+
       - name: Build installers
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # npm, explicitly: tauri-action would pick bun from the old bun.lock.
           tauriScript: npx tauri
-          args: --target ${{ matrix.target }}
+          args: --target ${{ matrix.target }} ${{ steps.signing.outputs.args }}
           # On a tag: attach to a draft release that the publish job finalises.
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: Qalam Urdu Studio ${{ github.ref_name }}
@@ -163,30 +198,44 @@ jobs:
         run: |
           npx tauri android init --ci
           npx tauri icon public/icon.svg
-      # Debug-signed so it installs without a release keystore, but built lean: 64-bit ARM only
-      # (virtually every phone since 2017) and the Rust library optimised and stripped of debug
-      # info, which otherwise made the APK ~490 MB.
+      # 64-bit ARM only (virtually every phone since 2017). Release build signed with the
+      # project's key (docs/SIGNING.md), so later versions install as updates. Without the key
+      # (a fork, say) it falls back to a lean debug-signed build.
       - name: Build APK
         env:
-          CARGO_PROFILE_DEV_DEBUG: "0"
-          CARGO_PROFILE_DEV_STRIP: "symbols"
-          CARGO_PROFILE_DEV_OPT_LEVEL: "s"
-          CARGO_PROFILE_DEV_INCREMENTAL: "false"
-        run: npx tauri android build --apk --debug --target aarch64 --ci
-      - name: Collect APK
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           v=$(node -p "require('./package.json').version")
-          apk=$(find src-tauri/gen/android -name '*universal*debug*.apk' -o -name '*-debug.apk' | head -n1)
-          cp "$apk" "Qalam-Urdu-Studio-$v-android-experimental.apk"
+          out="Qalam-Urdu-Studio-$v-android-arm64.apk"
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret: building a debug-signed APK"
+            export CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_DEV_STRIP=symbols CARGO_PROFILE_DEV_OPT_LEVEL=s
+            npx tauri android build --apk --debug --target aarch64 --ci
+            cp "$(find src-tauri/gen/android -name '*-debug.apk' | head -n1)" "$out"
+          else
+            npx tauri android build --apk --target aarch64 --ci
+            apk=$(find src-tauri/gen/android -name '*-release-unsigned.apk' | head -n1)
+            bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n1)
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.p12"
+            "$bt/zipalign" -f -p 4 "$apk" "$RUNNER_TEMP/aligned.apk"
+            "$bt/apksigner" sign --ks "$RUNNER_TEMP/release.p12" --ks-type PKCS12 \
+              --ks-pass env:ANDROID_KEYSTORE_PASSWORD --ks-key-alias "${ANDROID_KEY_ALIAS:-qalam}" \
+              --out "$out" "$RUNNER_TEMP/aligned.apk"
+            rm -f "$RUNNER_TEMP/release.p12"
+            "$bt/apksigner" verify --print-certs "$out"
+          fi
+          ls -l "$out"
       - name: Attach APK
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$GITHUB_REF_NAME" Qalam-Urdu-Studio-*-android-experimental.apk --clobber
+        run: gh release upload "$GITHUB_REF_NAME" Qalam-Urdu-Studio-*-android-arm64.apk --clobber
       - uses: actions/upload-artifact@v4
         with:
           name: qalam-android
-          path: Qalam-Urdu-Studio-*-android-experimental.apk
+          path: Qalam-Urdu-Studio-*-android-arm64.apk
           retention-days: 14
 
   publish:

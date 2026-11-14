@@ -1,69 +1,141 @@
+<div align="center">
+
+<img src="public/icon.svg" width="88" alt="Qalam Urdu Studio icon" />
+
 # Qalam Urdu Studio
 
-A desktop publishing suite for Urdu Nastaliq, Arabic and English: a modern successor to
-InPage Urdu Professional. Phonetic and multi-layout Urdu keyboards, multi-column page layout,
-master pages, tables, an Urdu dictionary, and PDF / Word / PNG / text / HTML export.
+**Desktop publishing for Urdu Nastaliq, Arabic and English**
 
-It runs as a native app on **Windows, macOS and Linux** (and, experimentally, Android), built
-with Rust and [Tauri 2](https://tauri.app). It is also still a PWA and a single-file offline HTML app.
+Created by **Uzair Asad**
 
-## Downloads
+[Website](https://uzairasad.github.io/qalam-urdu-studio/) ·
+[Open in your browser](https://uzairasad.github.io/qalam-urdu-studio/app/) ·
+[Download](https://github.com/uzairasad/qalam-urdu-studio/releases/latest) ·
+[Changelog](CHANGELOG.md)
 
-Releases are built on GitHub Actions from this repository's source, and every file has a
-SHA-256 checksum in `SHA256SUMS.txt`.
+</div>
 
-| Platform | Files | Notes |
+![Qalam Urdu Studio with an Urdu newspaper front page laid out in three columns](site/screenshot.png)
+
+Qalam Urdu Studio lets you typeset newspapers, magazines, books and documents in Urdu
+Nastaliq, then print them or export to PDF and Word. It runs as a native app on Windows, macOS,
+Linux and Android, and in any modern browser.
+
+## Features
+
+- **True Nastaliq.** Noto Nastaliq Urdu, Gulzar, Naskh, Ruqaa, Kufi and Quranic fonts, all
+  bundled, with correct joining and right-to-left layout.
+- **Urdu keyboards.** Phonetic, Monotype and Muqtadira layouts and an on-screen keyboard, so you
+  can type Urdu on any computer without changing system settings.
+- **Page layout.** Multi-column text frames, picture boxes, tables, master pages, rulers, a snap
+  grid and character scaling, on real paper sizes.
+- **Urdu dictionary.** Meanings, synonyms and antonyms, available offline.
+- **Open and export.** Qalam documents (`.qlm`); open Word, PDF and text files; export PDF,
+  Word, PNG, HTML and Unicode text.
+- **Print-ready.** Print preview and native printing at the exact physical page size.
+- **Works offline.** Nothing is loaded from the internet once the app is installed.
+
+## Download
+
+Get the latest version from the [releases page](https://github.com/uzairasad/qalam-urdu-studio/releases/latest).
+Every file is listed with its SHA-256 checksum in `SHA256SUMS.txt`.
+
+| Platform | File | Notes |
 | --- | --- | --- |
-| Windows 10/11 | `_x64-setup.exe`, `.msi`, `-portable-windows-x64.zip` | Not code-signed yet: SmartScreen may warn on first run. |
-| macOS 10.15+ | `_aarch64.dmg` (Apple Silicon), `_x64.dmg` (Intel) | Not notarized yet: right-click > Open the first time. |
+| Windows 10/11 | `_x64-setup.exe`, `_x64_en-US.msi`, `-portable-windows-x64.zip` | If SmartScreen warns, choose More info → Run anyway. |
+| macOS 10.15+ | `_aarch64.dmg` (Apple Silicon), `_x64.dmg` (Intel) | First launch: right-click the app → Open. |
 | Linux | `.AppImage`, `.deb`, `.rpm` | Needs WebKitGTK 4.1 (Ubuntu 22.04+, Debian 12+, Fedora 37+). |
-| Android | `-android-experimental.apk` | Debug-signed, for sideloading and testing. |
+| Android | `-android-arm64.apk` | Signed release build for 64-bit phones and tablets. |
+| Web | [Open in your browser](https://uzairasad.github.io/qalam-urdu-studio/app/) | Install it as an app from the browser, or download the single-file offline version from inside it. |
 
-## How it's built (and why not egui)
+The Windows and macOS builds aren't code-signed yet, which is why those warnings appear. See
+[docs/SIGNING.md](docs/SIGNING.md).
 
-[Mister Download Manager](https://github.com/anefzaoui/misterdownloadmanager) rewrote IDM natively in
-Rust with egui. That works for a download manager, but it doesn't work for an Urdu typesetter.
-egui and other Rust-native GUI toolkits don't do complex-script shaping or bidirectional layout,
-so Nastaliq comes out as disconnected letters. The text engines in system webviews do handle it
-(DirectWrite in WebView2, CoreText in WKWebView, HarfBuzz in WebKitGTK and Android).
+## How it's built
 
-So Qalam takes the Tauri route:
+Urdu Nastaliq is one of the hardest scripts to render: letters join along a sloping baseline,
+change shape with their neighbours, and run right to left alongside left-to-right numbers and
+English. Operating systems already ship text engines that do this well (DirectWrite, Core Text
+and HarfBuzz), and the system web engine is the most direct way to use them on every platform.
+So Qalam is built in layers:
 
 ```
-src/            React + TypeScript editor (unchanged UI, shared with the PWA)
-src/platform/   native.ts: the one bridge between the editor and its host
-src-tauri/      Rust shell: window, native Save dialogs that write real files,
-                native printing, file associations (.qlm/.qpg), opening documents
-                from the command line / Explorer / Finder, single running instance
+┌────────────────────────────────────────────────────────────────────┐
+│  Editor — React + TypeScript (src/)                                │
+│  page canvas, text frames, ribbon, keyboards, dictionary,          │
+│  import / export (PDF, Word, PNG, HTML, text)                      │
+├────────────────────────────────────────────────────────────────────┤
+│  Platform bridge — src/platform/native.ts                          │
+│  save, print, open-with: native calls in the app,                  │
+│  browser downloads and window.print() on the web                   │
+├───────────────────────────────────┬────────────────────────────────┤
+│  Native shell — Rust, Tauri 2     │  Web — PWA with offline cache  │
+│  (src-tauri/)                     │  + single-file offline HTML    │
+│  windows, Save dialogs that write │                                │
+│  real files, native printing,     │                                │
+│  .qlm file associations, one      │                                │
+│  running instance                 │                                │
+├───────────────────────────────────┴────────────────────────────────┤
+│  System web engine: WebView2 · WKWebView · WebKitGTK · Android     │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
-In a browser, `src/platform/native.ts` falls back to the old web behaviour, so one codebase
-serves the desktop app, the PWA and the single-file offline HTML. The typesetting fonts are
-bundled (`src/fonts.css`), so every build works with no network connection.
+- **One codebase.** The editor doesn't know where it runs. Everything platform-specific goes
+  through `src/platform/native.ts`, which calls the Rust shell inside the app and falls back to
+  browser behaviour on the web.
+- **Small, native apps.** The Rust shell uses the web engine the system already has, so
+  most installers are about 10 MB. It adds what a browser tab can't do: Save dialogs that remember
+  the last folder, native printing, double-click to open `.qlm` files, and handing documents to
+  the already-running window.
+- **Restricted file access.** The editor can only read files the user opened through the OS, and
+  can only write where the user chooses in a Save dialog.
+- **Fonts included.** All typesetting fonts are bundled (`src/fonts.css`), so pages look the
+  same everywhere and work with no network connection.
+
+### Repository layout
+
+```
+src/                  the editor (React + TypeScript)
+  components/         ribbon, canvas, toolbox, dialogs
+  utils/              import/export, keyboards, dictionary, templates
+  platform/native.ts  bridge to the native shell
+src-tauri/            Rust shell (Tauri 2): src/lib.rs, tauri.conf.json, icons
+public/               web app icons
+site/                 GitHub Pages project page
+scripts/              build helpers (single-file offline build, font trimming)
+docs/                 SIGNING.md: release signing
+.github/workflows/    ci.yml, release.yml, pages.yml
+```
 
 ## Develop
 
-Prerequisites: Node 22+, Rust (stable, via [rustup](https://rustup.rs)), and the
-[Tauri prerequisites](https://tauri.app/start/prerequisites/) for your OS (on Windows: the
-"Desktop development with C++" build tools; WebView2 already comes with Windows 10/11).
+You need Node 22+, Rust (stable, via [rustup](https://rustup.rs)), and the
+[Tauri prerequisites](https://tauri.app/start/prerequisites/) for your OS. On Windows that means
+the "Desktop development with C++" build tools; WebView2 already comes with Windows 10/11.
 
 ```bash
 npm install
-npm run app:dev      # desktop app with hot reload
+npm run app:dev      # native app with hot reload
 npm run app:build    # installers in target/release/bundle/
-npm run dev          # web/PWA only, http://localhost:3000
-npm run build        # PWA (dist/) + single-file offline HTML
+npm run dev          # web app only, http://localhost:3000
+npm run build        # web app (dist/) + single-file offline HTML
+npm run lint         # TypeScript type check
 ```
 
-Rust checks: `cargo fmt --all`, `cargo clippy --workspace --all-targets`, `cargo test --workspace`.
+Rust checks: `cargo fmt --all`, `cargo clippy --workspace --all-targets -- -D warnings`,
+`cargo test --workspace`.
 
 ## Releasing
 
-1. Bump `version` in `package.json` (the installers take it from there) and in `Cargo.toml`'s
-   `[workspace.package]`.
-2. Commit, then tag and push: `git tag v0.1.0 && git push origin v0.1.0`.
-3. `.github/workflows/release.yml` builds every platform, uploads them with `SHA256SUMS.txt`
-   and publishes the release.
+1. Set the new version in `package.json` (the installers read it from there) and in
+   `Cargo.toml` under `[workspace.package]`, and add it to `CHANGELOG.md`.
+2. Commit, then tag and push, for example `git tag v0.2.0 && git push origin main v0.2.0`.
+3. `.github/workflows/release.yml` builds every platform on GitHub Actions, signs the Android
+   app, attaches `SHA256SUMS.txt` and publishes the release. The website's download buttons pick
+   up the new files automatically.
 
-To sign the builds later, add the Windows certificate / Apple notarization secrets that
-[tauri-action](https://github.com/tauri-apps/tauri-action) reads.
+Pushing to `main` also rebuilds the website and the web app (`.github/workflows/pages.yml`).
+
+## Author
+
+Qalam Urdu Studio is created by **Uzair Asad**. © 2026 Uzair Asad. All rights reserved.

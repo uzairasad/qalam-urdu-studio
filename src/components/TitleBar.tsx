@@ -1,4 +1,5 @@
 import React from 'react';
+import { APP_VERSION } from '../appInfo';
 import { isNativeApp } from '../platform/native';
 import {
   Minus,
@@ -97,7 +98,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             Qalam Urdu Studio
           </span>
           <span className="text-slate-500 text-[11px] font-mono hidden xl:inline">
-            v1.0
+            v{APP_VERSION}
           </span>
         </div>
 

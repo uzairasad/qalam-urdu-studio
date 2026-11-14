@@ -31,8 +31,8 @@
     "active": true,
     "targets": "all",
     "category": "Productivity",
-    "shortDescription": "Nastaliq Urdu desktop publishing",
-    "longDescription": "Qalam Urdu Studio is a desktop publishing suite for Urdu Nastaliq, Arabic and English: phonetic and multi-layout Urdu keyboards, multi-column page layout, an Urdu dictionary, and PDF, Word, PNG and text export.",
+    "shortDescription": "Urdu Nastaliq desktop publishing, created by Uzair Asad",
+    "longDescription": "Qalam Urdu Studio is a desktop publishing studio for Urdu Nastaliq, Arabic and English, created by Uzair Asad. Typeset newspapers, magazines, books and documents with phonetic and traditional Urdu keyboards, multi-column page frames, tables, an Urdu dictionary, and export to PDF, Word, PNG, HTML and text.",
     "copyright": "Copyright © 2026 Uzair Asad",
     "icon": [
       "icons/32x32.png",
@@ -43,7 +43,10 @@
     ],
     "fileAssociations": [
       {
-        "ext": ["qlm", "qpg"],
+        "ext": [
+          "qlm",
+          "qpg"
+        ],
         "name": "Qalam Urdu Studio Document",
         "description": "Qalam Urdu Studio Document",
         "role": "Editor",
@@ -51,17 +54,22 @@
       }
     ],
     "windows": {
-      "webviewInstallMode": { "type": "downloadBootstrapper" },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
       "nsis": {
         "installMode": "currentUser",
         "displayLanguageSelector": false
       }
     },
     "linux": {
-      "deb": { "depends": [] }
+      "deb": {
+        "depends": []
+      }
     },
     "macOS": {
       "minimumSystemVersion": "10.15"
-    }
+    },
+    "publisher": "Uzair Asad"
   }
 }

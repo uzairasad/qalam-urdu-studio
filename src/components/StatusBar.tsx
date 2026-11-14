@@ -1,4 +1,5 @@
 import React from 'react';
+import { APP_VERSION } from '../appInfo';
 import {
   ChevronLeft,
   ChevronRight,
@@ -246,7 +247,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         </div>
 
         <span className="hidden xl:inline font-mono text-[10px] tracking-wide text-slate-400 pl-1">
-          v1.0
+          v{APP_VERSION}
         </span>
       </div>
     </div>

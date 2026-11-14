@@ -1,6 +1,0 @@
-{
-  "name": "InPage Urdu Professional",
-  "description": "Desktop Publishing (DTP) software clone for Windows featuring Urdu Nastaliq typesetting, Phonetic keyboard, multi-column page layout, and document publishing.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

@@ -25,6 +25,7 @@ import {
   TextElement,
 } from '../types/inpage';
 import { URDU_NUMERALS } from './phoneticKeyboard';
+import { APP_VERSION } from '../appInfo';
 import { getProjectBaseName } from './exportInpage';
 import { saveFile } from '../platform/native';
 
@@ -389,7 +390,7 @@ export async function exportProjectToDocx(project: DocumentProject): Promise<str
 
   const doc = new Document({
     title: title || 'Qalam Urdu Studio Document',
-    creator: 'Qalam Urdu Studio v1.0',
+    creator: `Qalam Urdu Studio ${APP_VERSION}`,
     sections: [
       {
         properties: {

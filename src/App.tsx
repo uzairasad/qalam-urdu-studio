@@ -1,5 +1,5 @@
 /**
- * Qalam Urdu Studio v1.0 - Desktop Publishing (DTP)
+ * Qalam Urdu Studio - Urdu desktop publishing (DTP). Created by Uzair Asad.
  * @license Apache-2.0
  */
 

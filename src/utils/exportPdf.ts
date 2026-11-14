@@ -3,6 +3,7 @@ import { DocumentProject } from '../types/inpage';
 import { renderPageToCanvas } from './exportPng';
 import { getProjectBaseName } from './exportInpage';
 import { saveFile } from '../platform/native';
+import { APP_VERSION } from '../appInfo';
 
 /**
  * Exports all pages of a Qalam Urdu Studio project into a multi-page PDF
@@ -42,5 +43,6 @@ export async function exportProjectToPdf(project: DocumentProject): Promise<stri
 
   const baseName = getProjectBaseName(fileName);
   const outName = `${baseName}.pdf`;
+  pdf.setProperties({ title: baseName, creator: `Qalam Urdu Studio ${APP_VERSION}` });
   return saveFile(outName, pdf.output('blob'), 'application/pdf');
 }

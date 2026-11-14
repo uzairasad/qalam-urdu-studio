@@ -1,4 +1,5 @@
 import React from 'react';
+import { APP_VERSION } from '../appInfo';
 import { ToolType } from '../types/inpage';
 import {
   PickToolIcon,
@@ -221,7 +222,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({
 
       <div className="hidden md:flex mt-auto pt-2 mb-0.5 flex-col items-center text-[9px] text-slate-400 font-arabic-sans leading-tight text-center px-0.5">
         <span>قلم</span>
-        <span className="text-[8px] font-mono tabular-nums text-slate-400">v1.0</span>
+        <span className="text-[8px] font-mono tabular-nums text-slate-400">v{APP_VERSION}</span>
       </div>
     </div>
   );

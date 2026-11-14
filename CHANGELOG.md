@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- Android: the APK is now a signed release build (`-android-arm64.apk`), so future versions
+  install as updates. It's signed with a different key than earlier test builds, so uninstall
+  0.1.x before installing it.
+- The title bar, status bar, toolbox and About box show the real version instead of "v1.0".
+  The About box says "Created by Uzair Asad". Exported PDF and Word files record the app version.
+- Smaller downloads: the bundled fonts ship only in WOFF2, which roughly halves their size in
+  every installer, the APK and the single-file offline HTML (14.7 MB down to 8.4 MB). The offline
+  HTML is no longer packed inside the native apps.
+- The web app's "Download Single-File App" button always gets the copy from the same build.
+- New project website on GitHub Pages, with the web app at `/app/`.
+- Release builds can sign Windows (Azure Trusted Signing) and macOS (Developer ID +
+  notarization) apps once those certificates are added (see `docs/SIGNING.md`).
+- Removed files and dependencies left over from the original prototype.
+
 ## 0.1.2 — 2026-11-14
 
 - Android: the experimental APK is now about 23 MB instead of 490 MB. It's built for 64-bit ARM

@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Qalam Urdu Studio</title>
+  <meta name="description" content="Qalam Urdu Studio by Uzair Asad: desktop publishing for Urdu Nastaliq, Arabic and English. Free apps for Windows, macOS, Linux and Android, or use it in your browser." />
+  <meta name="author" content="Uzair Asad" />
+  <meta property="og:title" content="Qalam Urdu Studio" />
+  <meta property="og:description" content="Urdu Nastaliq desktop publishing for Windows, macOS, Linux, Android and the web. Created by Uzair Asad." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="screenshot.png" />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="icon" type="image/svg+xml" href="app/icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f8fc;
+      --surface: #ffffff;
+      --surface-2: #eef2f9;
+      --text: #0f172a;
+      --muted: #52607a;
+      --border: #dde3ee;
+      --brand: #0b57d0;
+      --brand-strong: #0d2f85;
+      --brand-text: #ffffff;
+      --gold: #f59e0b;
+      --hero-bg: #0f172a;
+      --hero-text: #f8fafc;
+      --hero-muted: #a9b6cc;
+      --shadow: 0 20px 50px -20px rgba(15, 23, 42, 0.35);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0b1120;
+        --surface: #111a2e;
+        --surface-2: #16213a;
+        --text: #e7ecf5;
+        --muted: #9aa8c0;
+        --border: #24314d;
+        --brand: #4c8dff;
+        --brand-strong: #8db4ff;
+        --brand-text: #06132e;
+        --hero-bg: #070c18;
+        --shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.7);
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0b1120;
+      --surface: #111a2e;
+      --surface-2: #16213a;
+      --text: #e7ecf5;
+      --muted: #9aa8c0;
+      --border: #24314d;
+      --brand: #4c8dff;
+      --brand-strong: #8db4ff;
+      --brand-text: #06132e;
+      --hero-bg: #070c18;
+      --shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.7);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--brand); }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+    .urdu { font-family: "Noto Nastaliq Urdu", serif; direction: rtl; }
+
+    /* Header + hero */
+    .hero { background: var(--hero-bg); color: var(--hero-text); padding-bottom: 0; overflow: hidden; }
+    nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; }
+    .brand { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; font-weight: 700; }
+    .brand img { width: 32px; height: 32px; border-radius: 8px; }
+    nav .links { display: flex; gap: 22px; font-size: 14px; }
+    nav .links a { color: var(--hero-muted); text-decoration: none; }
+    nav .links a:hover { color: var(--hero-text); }
+    .hero-body { text-align: center; padding: 56px 0 40px; }
+    .hero-urdu { font-size: clamp(28px, 5vw, 44px); line-height: 2.1; color: var(--gold); margin: 0; }
+    h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.08; letter-spacing: -0.03em; margin: 8px 0 16px; }
+    .lede { max-width: 640px; margin: 0 auto; color: var(--hero-muted); font-size: 18px; }
+    .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 32px 0 10px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 15px;
+      text-decoration: none; border: 1px solid transparent; cursor: pointer;
+    }
+    .btn-primary { background: #0b57d0; color: #fff; }
+    .btn-primary:hover { background: #0a4cb6; }
+    .btn-ghost { color: var(--hero-text); border-color: rgba(255,255,255,0.22); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.08); }
+    .hero-note { color: var(--hero-muted); font-size: 13px; }
+    .shot {
+      display: block; width: 100%; max-width: 1040px; margin: 36px auto -1px;
+      border-radius: 14px 14px 0 0; border: 1px solid rgba(255,255,255,0.12); border-bottom: 0;
+      box-shadow: 0 -10px 60px -10px rgba(11, 87, 208, 0.45);
+    }
+
+    section { padding: 72px 0; }
+    h2 { font-size: clamp(26px, 4vw, 34px); letter-spacing: -0.02em; margin: 0 0 8px; }
+    .section-lede { color: var(--muted); margin: 0 0 36px; max-width: 680px; }
+
+    /* Features */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+    .card h3 { margin: 10px 0 6px; font-size: 17px; }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
+    .icon {
+      width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+      background: var(--surface-2); color: var(--brand);
+    }
+    .icon svg { width: 20px; height: 20px; }
+
+    /* Downloads */
+    .downloads { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .platforms { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+    .platform { border: 1px solid var(--border); border-radius: 14px; padding: 20px; background: var(--bg); display: flex; flex-direction: column; gap: 10px; }
+    .platform.recommended { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+    .platform h3 { margin: 0; font-size: 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--brand); }
+    .platform ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .platform li a {
+      display: flex; justify-content: space-between; gap: 8px; text-decoration: none;
+      padding: 9px 12px; border-radius: 8px; background: var(--surface-2); color: var(--text); font-size: 14px; font-weight: 500;
+    }
+    .platform li a:hover { background: var(--brand); color: var(--brand-text); }
+    .platform li a span:last-child { color: inherit; opacity: 0.7; font-weight: 400; white-space: nowrap; }
+    .platform small { color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .release-line { color: var(--muted); font-size: 14px; margin-top: 20px; }
+
+    /* How it's built */
+    .layers { display: grid; gap: 12px; }
+    .layer { display: grid; grid-template-columns: 180px 1fr; gap: 18px; align-items: start; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 22px; }
+    .layer code { font: 600 14px/1.5 ui-monospace, "Cascadia Code", Menlo, monospace; color: var(--brand); }
+    .layer p { margin: 0; color: var(--muted); font-size: 15px; }
+    @media (max-width: 640px) {
+      .layer { grid-template-columns: 1fr; gap: 4px; }
+      nav .links { display: none; }
+    }
+
+    footer { padding: 36px 0 48px; color: var(--muted); font-size: 14px; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; }
+    footer strong { color: var(--text); }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <nav>
+        <a class="brand" href="./"><img src="app/icon.svg" alt="" />Qalam Urdu Studio</a>
+        <div class="links">
+          <a href="#features">Features</a>
+          <a href="#download">Download</a>
+          <a href="#how">How it's built</a>
+          <a href="https://github.com/uzairasad/qalam-urdu-studio">GitHub</a>
+        </div>
+      </nav>
+      <div class="hero-body">
+        <p class="hero-urdu urdu" lang="ur">اردو نستعلیق میں پیشہ ورانہ کمپوزنگ اور اشاعت</p>
+        <h1>Qalam Urdu Studio</h1>
+        <p class="lede">Desktop publishing for Urdu Nastaliq, Arabic and English. Typeset newspapers,
+          magazines, books and documents, then print them or export to PDF and Word.</p>
+        <div class="cta">
+          <a class="btn btn-primary" id="hero-download" href="#download">Download</a>
+          <a class="btn btn-ghost" href="app/">Open in your browser</a>
+        </div>
+        <p class="hero-note">Free for Windows, macOS, Linux and Android · Works offline · Created by Uzair Asad</p>
+        <img class="shot" src="screenshot.png" width="1440" height="900"
+             alt="Qalam Urdu Studio with an Urdu newspaper front page laid out in three columns" />
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="features">
+      <div class="wrap">
+        <h2>Made for Urdu typesetting</h2>
+        <p class="section-lede">Everything you need to compose pages in Nastaliq, with the page layout tools of a real DTP application.</p>
+        <div class="grid">
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+            <h3>True Nastaliq</h3>
+            <p>Noto Nastaliq Urdu, Gulzar, Naskh, Ruqaa, Kufi and Quranic fonts, all bundled, with correct joining and right-to-left layout.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg></div>
+            <h3>Urdu keyboards</h3>
+            <p>Phonetic, Monotype and Muqtadira layouts, plus an on-screen keyboard. Type Urdu on any computer, no system setup needed.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/></svg></div>
+            <h3>Page layout</h3>
+            <p>Multi-column text frames, picture boxes, tables, master pages, rulers and a snap grid, on real paper sizes.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M8 7h8M8 11h6"/></svg></div>
+            <h3>Urdu dictionary</h3>
+            <p>A built-in dictionary with meanings, synonyms and antonyms, available offline.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><path d="M12 11v6M9 14l3 3 3-3"/></svg></div>
+            <h3>Open and export</h3>
+            <p>Save Qalam documents (.qlm), open Word, PDF and text files, and export to PDF, Word, PNG, HTML and Unicode text.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg></div>
+            <h3>Print-ready</h3>
+            <p>Print preview and native printing, with pages that match their physical size exactly.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="download" class="downloads">
+      <div class="wrap">
+        <h2>Download</h2>
+        <p class="section-lede">Native apps for every major platform, or <a href="app/">use it in your browser</a> and install it as a web app.</p>
+        <div class="platforms" id="platforms">
+          <div class="platform" data-os="windows">
+            <h3>Windows <span class="badge" hidden>Your system</span></h3>
+            <ul>
+              <li><a data-asset="_x64-setup.exe" href="#"><span>Installer (.exe)</span><span>Windows 10/11</span></a></li>
+              <li><a data-asset="_x64_en-US.msi" href="#"><span>MSI package</span><span>For IT deployment</span></a></li>
+              <li><a data-asset="-portable-windows-x64.zip" href="#"><span>Portable (.zip)</span><span>No install</span></a></li>
+            </ul>
+            <small>If SmartScreen warns on first run, choose More info → Run anyway.</small>
+          </div>
+          <div class="platform" data-os="mac">
+            <h3>macOS <span class="badge" hidden>Your system</span></h3>
+            <ul>
+              <li><a data-asset="_aarch64.dmg" href="#"><span>Apple Silicon (.dmg)</span><span>M1 and later</span></a></li>
+              <li><a data-asset="_x64.dmg" href="#"><span>Intel (.dmg)</span><span>macOS 10.15+</span></a></li>
+            </ul>
+            <small>First launch: right-click the app and choose Open.</small>
+          </div>
+          <div class="platform" data-os="linux">
+            <h3>Linux <span class="badge" hidden>Your system</span></h3>
+            <ul>
+              <li><a data-asset="_amd64.AppImage" href="#"><span>AppImage</span><span>Any distro</span></a></li>
+              <li><a data-asset="_amd64.deb" href="#"><span>.deb</span><span>Ubuntu, Debian</span></a></li>
+              <li><a data-asset=".x86_64.rpm" href="#"><span>.rpm</span><span>Fedora, openSUSE</span></a></li>
+            </ul>
+            <small>Needs WebKitGTK 4.1 (Ubuntu 22.04+, Debian 12+, Fedora 37+).</small>
+          </div>
+          <div class="platform" data-os="android">
+            <h3>Android <span class="badge" hidden>Your system</span></h3>
+            <ul>
+              <li><a data-asset="-android-arm64.apk" href="#"><span>APK</span><span>64-bit phones</span></a></li>
+            </ul>
+            <small>Install by allowing your browser to install apps. Best on tablets and large phones.</small>
+          </div>
+        </div>
+        <p class="release-line" id="release-line">All files and checksums are on the
+          <a href="https://github.com/uzairasad/qalam-urdu-studio/releases/latest">latest release</a> page.</p>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="wrap">
+        <h2>How it's built</h2>
+        <p class="section-lede">One codebase gives the native apps, the web app and a single-file offline version. Each layer does what it's best at.</p>
+        <div class="layers">
+          <div class="layer"><code>React + TypeScript</code><p>The editor: page canvas, text frames, ribbon, keyboards, dictionary, import and export. The same code runs everywhere.</p></div>
+          <div class="layer"><code>System web engine</code><p>Draws the pages. WebView2, WebKit and Android WebView shape Nastaliq with mature text engines (DirectWrite, Core Text, HarfBuzz), which handle joining, stacking and right-to-left text correctly.</p></div>
+          <div class="layer"><code>Rust (Tauri 2)</code><p>The native shell: windows, Save dialogs that write real files, native printing, file associations for .qlm documents, and a single running instance. Small installers, because it uses the web engine already on your system.</p></div>
+          <div class="layer"><code>GitHub Actions</code><p>Builds every installer from this source code, signs the Android app, and publishes checksums with each release.</p></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>Qalam Urdu Studio · Created by <strong>Uzair Asad</strong></span>
+      <span><a href="https://github.com/uzairasad/qalam-urdu-studio">Source on GitHub</a></span>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var REPO = 'uzairasad/qalam-urdu-studio';
+      var ua = navigator.userAgent;
+      var os = /Android/i.test(ua) ? 'android'
+        : /Mac/i.test(ua) && !/iPhone|iPad/i.test(ua) ? 'mac'
+        : /Win/i.test(ua) ? 'windows'
+        : /Linux|X11/i.test(ua) ? 'linux' : null;
+
+      var platforms = document.getElementById('platforms');
+      if (os) {
+        var card = platforms.querySelector('[data-os="' + os + '"]');
+        if (card) {
+          card.classList.add('recommended');
+          card.querySelector('.badge').hidden = false;
+          platforms.insertBefore(card, platforms.firstChild);
+        }
+      }
+
+      // Links fall back to the releases page; with the release list they point at the files.
+      var releasesUrl = 'https://github.com/' + REPO + '/releases/latest';
+      var links = document.querySelectorAll('[data-asset]');
+      links.forEach(function (a) { a.href = releasesUrl; });
+
+      fetch('https://api.github.com/repos/' + REPO + '/releases/latest')
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function (rel) {
+          links.forEach(function (a) {
+            var suffix = a.getAttribute('data-asset');
+            var asset = rel.assets.find(function (x) { return x.name.endsWith(suffix); });
+            if (asset) a.href = asset.browser_download_url;
+          });
+          var line = document.getElementById('release-line');
+          line.innerHTML = 'Version ' + rel.tag_name.replace(/^v/, '') + '. All files and SHA-256 checksums are on the ' +
+            '<a href="' + rel.html_url + '">release page</a>.';
+          if (os) {
+            var first = document.querySelector('[data-os="' + os + '"] [data-asset]');
+            if (first) {
+              var hero = document.getElementById('hero-download');
+              hero.href = first.href;
+              hero.textContent = 'Download for ' + { windows: 'Windows', mac: 'macOS', linux: 'Linux', android: 'Android' }[os];
+            }
+          }
+        })
+        .catch(function () { /* keep the release-page links */ });
+    })();
+  </script>
+</body>
+</html>
