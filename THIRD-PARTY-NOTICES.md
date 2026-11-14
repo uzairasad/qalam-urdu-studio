@@ -31,6 +31,7 @@ any software. The fonts themselves stay under the OFL and can't be sold on their
 | [jsPDF](https://github.com/parallax/jsPDF) | MIT |
 | [docx](https://github.com/dolanmiu/docx) | MIT |
 | [JSZip](https://stuk.github.io/jszip/) | MIT or GPL-3.0 |
+| [fflate](https://github.com/101arrowz/fflate) | MIT |
 | [PDF.js](https://mozilla.github.io/pdf.js/) | Apache-2.0 |
 | [Lucide](https://lucide.dev) icons | ISC |
 | [Motion](https://motion.dev) | MIT |

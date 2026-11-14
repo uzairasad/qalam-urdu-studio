@@ -956,7 +956,9 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
             : 'object-cover';
         return (
           <div
-            className={`w-full h-full overflow-hidden relative flex flex-col items-center justify-center bg-slate-50 ${
+            className={`w-full h-full overflow-hidden relative flex flex-col items-center justify-center ${
+              pe.imageSrc && !imgFailed ? '' : 'bg-slate-50'
+            } ${
               pe.shape === 'oval'
                 ? 'rounded-full'
                 : pe.shape === 'rounded'

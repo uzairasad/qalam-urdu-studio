@@ -32,7 +32,8 @@ before dev builds dropped dependency debug info in `Cargo.toml`).
 | `src/components/RibbonToolbar.tsx` | The ribbon (largest UI file) |
 | `src/components/*Modal.tsx` | Dialogs: dictionary, keyboard, setup, print preview, find/replace… |
 | `src/utils/export*.ts`, `import*.ts` | PDF, Word, PNG, text export; Word/PDF/text import |
-| `src/utils/ole.ts`, `inpageText.ts`, `importInpage.ts` | Real InPage files: OLE reader, InPage↔Unicode table and fixes, `InPage100` paragraph records → pages; `exportInpage.ts` writes InPage-encoded text |
+| `src/utils/ole.ts`, `inpageText.ts`, `importInpage.ts` | Real InPage files: OLE reader, InPage↔Unicode table and fixes, entry point (layout, falling back to text); `exportInpage.ts` writes InPage-encoded text |
+| `src/utils/inpageFormat.ts`, `inpageLayout.ts`, `fitText.ts`, `dibToPng.ts` | InPage structures (layout records, fonts, text, styles, saved frames and lines; `docs/INPAGE-FORMAT.md`), pages rebuilt from them, shrinking text that overflows (browser), pictures |
 | `src/utils/textLayout.ts` | Plain text → A4 pages of text frames (used by the .txt and InPage importers) |
 | `src/utils/phoneticKeyboard.ts` | Urdu keyboard layouts |
 | `src/utils/urduDict*.ts` | Offline Urdu dictionary data and lookup |
@@ -53,9 +54,11 @@ before dev builds dropped dependency debug info in `Cargo.toml`).
 - The webview has no fs permissions: Rust only reads files the OS handed over (`OpenQueue.allowed`)
   and only writes where the user chose in a Save dialog.
 - InPage: never commit real InPage documents (the user's family archive is private); tests
-  build synthetic InPage bytes. Classic InPage stores Urdu numbers reversed, medial ی as the
-  ے code (A5) only sometimes (A4 is usual), and one code (A3) for ئ/ء. Newer InPage (2009+,
-  Unicode) files have no `InPage100` stream and aren't supported yet.
+  build synthetic documents (`src/utils/inpageTestFiles.ts`). To check real ones locally:
+  `INPAGE_SAMPLES=/path/to/folder npm test`. Classic InPage stores Urdu numbers reversed,
+  medial ی as the ے code (A5) only sometimes (A4 is usual), and one code (A3) for ئ/ء. InPage
+  2009+ files have an `InPage300` stream (UTF-16 text) with the same structure. Read
+  `docs/INPAGE-FORMAT.md` before changing the readers, and update it with what you find.
 - Native printing is desktop-only (`#[cfg(desktop)]`); Android falls back to `window.print()`.
 - Autosave keys in localStorage include legacy names (`qalampage_autosave_v1`, `inpage_autosave_v4`)
   that are still read for migration; don't remove them.

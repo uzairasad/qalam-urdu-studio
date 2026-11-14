@@ -46,6 +46,7 @@ import { resolveFontStack } from './utils/fonts';
 import { exportPageToPng } from './utils/exportPng';
 import { exportForInPage } from './utils/exportInpage';
 import { inPageBytesToProject, InPageFormatError, looksLikeInPageText } from './utils/importInpage';
+import { fitTextToFrames } from './utils/fitText';
 import { isOleFile } from './utils/ole';
 import { exportProjectToPdf } from './utils/exportPdf';
 import { exportProjectToDocx } from './utils/exportDocx';
@@ -998,14 +999,21 @@ export default function App() {
   };
 
   /** Classic InPage documents (.inp, .B01 backups, InPage-exported .txt) → a new tab. */
-  const openInPage = (bytes: Uint8Array, fileName: string) => {
+  const openInPage = async (bytes: Uint8Array, fileName: string) => {
     try {
-      const { project: imported, unreadable, paragraphs } = inPageBytesToProject(bytes, fileName);
+      const { project: imported, unreadable, paragraphs, layout } = inPageBytesToProject(bytes, fileName);
+      // InPage's fonts are more compact than the bundled ones: shrink text that would be cut off.
+      const resized = layout ? await fitTextToFrames(imported).catch(() => 0) : 0;
       openProjectInNewTab(imported);
+      const pages = imported.pages.length;
       showToast(
-        `Opened ${fileName} from InPage: ${paragraphs} paragraphs` +
+        `Opened ${fileName} from InPage: ${pages} page${pages === 1 ? '' : 's'}, ${paragraphs} paragraphs` +
           (unreadable ? `, ${unreadable} character${unreadable === 1 ? '' : 's'} could not be read` : '') +
-          '. The text is in; the original page layout is not.',
+          (layout
+            ? resized
+              ? `. Text made smaller to fit in ${resized} frame${resized === 1 ? '' : 's'}.`
+              : '.'
+            : '. The text is in; the page layout could not be read.'),
         7000
       );
     } catch (err) {

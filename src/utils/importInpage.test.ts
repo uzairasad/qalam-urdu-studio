@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { inPageBytesToProject, looksLikeInPageText, parseInPage100, parseInPageFile } from './importInpage.ts';
 import { decodeInPageBytes, encodeInPageText, normalizeInPageText } from './inpageText.ts';
 import { isOleFile, OleFile } from './ole.ts';
+import { buildOle } from './inpageTestFiles.ts';
 
 // --- Synthetic InPage data (made for these tests; no real documents in the repository) -------
 
@@ -24,74 +25,6 @@ function inpage100(stories: string[][]): Uint8Array {
     out.push(0xff, 0x7f, 0x00, 0x13, 0x88, 0x01, 0x02, 0x03, 0x99, 0xab, 0xcd); // frame data between stories
   }
   return new Uint8Array(out);
-}
-
-/**
- * A minimal OLE compound file (512-byte sectors) holding `big` as a regular stream named
- * InPage100 (padded past the 4096-byte mini-stream cutoff) and `small` in the mini stream.
- */
-function buildOle(big: Uint8Array, small: Uint8Array): Uint8Array {
-  const S = 512;
-  const END = 0xfffffffe;
-  const bigData = new Uint8Array(Math.max(4096, big.length));
-  bigData.set(big);
-  const miniContainer = new Uint8Array(Math.ceil(small.length / 64) * 64 || 64);
-  miniContainer.set(small);
-  const miniSectors = miniContainer.length / 64;
-  const containerSectors = Math.ceil(miniContainer.length / S);
-  const bigSectors = Math.ceil(bigData.length / S);
-  // Sector map: 0 FAT, 1 directory, 2 mini FAT, 3.. mini stream container, then the big stream.
-  const firstContainer = 3;
-  const firstBig = firstContainer + containerSectors;
-  const total = firstBig + bigSectors;
-
-  const file = new Uint8Array(S * (total + 1));
-  const dv = new DataView(file.buffer);
-  [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1].forEach((b, i) => (file[i] = b));
-  dv.setUint16(0x18, 0x3e, true);
-  dv.setUint16(0x1a, 3, true);
-  dv.setUint16(0x1c, 0xfffe, true);
-  dv.setUint16(0x1e, 9, true);
-  dv.setUint16(0x20, 6, true);
-  dv.setUint32(0x2c, 1, true); // FAT sectors
-  dv.setUint32(0x30, 1, true); // first directory sector
-  dv.setUint32(0x38, 4096, true); // mini stream cutoff
-  dv.setUint32(0x3c, 2, true); // first mini FAT sector
-  dv.setUint32(0x40, 1, true);
-  dv.setUint32(0x44, END, true); // no DIFAT sectors
-  for (let i = 0; i < 109; i++) dv.setUint32(0x4c + i * 4, i === 0 ? 0 : 0xffffffff, true);
-
-  const sector = (n: number) => S * (n + 1);
-  const fat = new Array(S / 4).fill(0xffffffff);
-  fat[0] = 0xfffffffd;
-  fat[1] = END;
-  fat[2] = END;
-  for (let i = 0; i < containerSectors; i++) fat[firstContainer + i] = i + 1 < containerSectors ? firstContainer + i + 1 : END;
-  for (let i = 0; i < bigSectors; i++) fat[firstBig + i] = i + 1 < bigSectors ? firstBig + i + 1 : END;
-  fat.forEach((v, i) => dv.setUint32(sector(0) + i * 4, v, true));
-
-  const miniFat = new Array(S / 4).fill(0xffffffff);
-  for (let i = 0; i < miniSectors; i++) miniFat[i] = i + 1 < miniSectors ? i + 1 : END;
-  miniFat.forEach((v, i) => dv.setUint32(sector(2) + i * 4, v, true));
-
-  const dirEntry = (index: number, name: string, type: number, start: number, size: number, child = 0xffffffff, right = 0xffffffff) => {
-    const o = sector(1) + index * 128;
-    for (let i = 0; i < name.length; i++) dv.setUint16(o + i * 2, name.charCodeAt(i), true);
-    dv.setUint16(o + 64, (name.length + 1) * 2, true);
-    file[o + 66] = type;
-    dv.setUint32(o + 68, 0xffffffff, true);
-    dv.setUint32(o + 72, right, true);
-    dv.setUint32(o + 76, child, true);
-    dv.setUint32(o + 116, start, true);
-    dv.setUint32(o + 120, size, true);
-  };
-  dirEntry(0, 'Root Entry', 5, firstContainer, miniContainer.length, 1);
-  dirEntry(1, 'InPage100', 2, firstBig, bigData.length, 0xffffffff, 2);
-  dirEntry(2, 'DocumentInfo', 2, 0, small.length);
-
-  file.set(miniContainer, sector(firstContainer));
-  file.set(bigData, sector(firstBig));
-  return file;
 }
 
 // --- Tests ------------------------------------------------------------------------------------

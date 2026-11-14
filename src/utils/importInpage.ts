@@ -1,14 +1,16 @@
 /**
- * Opens documents made by classic InPage (1.x, 2.x, 2000, XP 2004, 2005): .inp files and the
- * .B01 backups InPage keeps next to them, plus .txt files exported from InPage.
+ * Opens InPage documents: .inp files from InPage 1.x, 2.x, 2000, XP 2004, 2005 ("InPage100"
+ * stream, InPage's own 8-bit text encoding) and InPage 2009 and later ("InPage300", Unicode
+ * text), the .B01 backups InPage keeps next to them, and .txt files exported from InPage.
  *
- * A .inp file is an OLE compound file; the document is in its "InPage100" stream. Inside it,
- * each paragraph is stored as a 32-bit length followed by that many bytes of InPage-encoded
- * text ending in 0x0D, and consecutive paragraphs of one story (text frame) follow each other
- * directly or after 5 bytes of paragraph attributes. Page layout, frames and styles are not
- * decoded yet: the text comes in, in order, and is laid out on A4 pages.
+ * The pages are rebuilt as InPage laid them out (inpageLayout.ts, on the structures read by
+ * inpageFormat.ts): page size and margins, every text frame in its place with the text InPage
+ * set in it, columns, rotation, lines, boxes and pictures. When a file's layout can't be read,
+ * its text still comes in, laid out on pages of the document's own size.
  */
 import type { DocumentProject } from '../types/inpage.ts';
+import { readPageGeometry, readTextV1, readTextV3, type InPageText } from './inpageFormat.ts';
+import { buildLayout, decodeRange, pageSetupFromGeometry } from './inpageLayout.ts';
 import { decodeInPageBytes, normalizeInPageText, tidyParagraph } from './inpageText.ts';
 import { isOleFile, OleFile } from './ole.ts';
 import { layoutTextAsProject } from './textLayout.ts';
@@ -75,19 +77,46 @@ export function parseInPage100(stream: Uint8Array): InPageParseResult {
   return { stories: stories.filter((s) => s.some((para) => para.trim())), unreadable };
 }
 
+/** The document stream of a .inp/.B01 file, and which InPage generation wrote it. */
+function documentStream(ole: OleFile): { stream: Uint8Array; version: 1 | 3 } {
+  const v3 = ole.stream('InPage300');
+  if (v3) return { stream: v3, version: 3 };
+  const v1 = ole.stream('InPage100') ?? ole.stream('InPage200');
+  if (v1) return { stream: v1, version: 1 };
+  if (ole.streamNames().some((n) => /^inpage/i.test(n))) {
+    throw new InPageFormatError('This InPage document uses a format Qalam Urdu Studio cannot read yet.');
+  }
+  throw new InPageFormatError('This file is not an InPage document (it may be an old Word or Excel file).');
+}
+
+/** Stories of decoded text (each a list of paragraphs). */
+function storiesFromText(text: InPageText): InPageParseResult {
+  const stories: string[][] = [];
+  let unreadable = 0;
+  const ranges: [number, number][] = [];
+  for (const p of text.paragraphs) {
+    const r = ranges[p.story];
+    if (!r) ranges[p.story] = [p.position, p.position + p.length];
+    else r[1] = p.position + p.length;
+  }
+  for (const r of ranges) {
+    if (!r) continue;
+    const d = decodeRange(text, r[0], r[1]);
+    unreadable += d.unreadable;
+    const paras = d.text.replace(/\{\{PAGE\}\}/g, '').split('\n');
+    if (paras.some((x) => x.trim())) stories.push(paras);
+  }
+  return { stories, unreadable };
+}
+
 /** Text from a .inp/.B01 file's bytes. */
 export function parseInPageFile(bytes: Uint8Array): InPageParseResult {
   if (!isOleFile(bytes)) throw new InPageFormatError('This is not an InPage document.');
-  const ole = new OleFile(bytes);
-  const stream = ole.stream('InPage100');
-  if (stream) return parseInPage100(stream);
-  if (ole.streamNames().some((n) => /^inpage/i.test(n))) {
-    throw new InPageFormatError(
-      'This document was saved by a newer InPage version (2009 or later) whose format Qalam Urdu Studio cannot read yet. ' +
-        'In that InPage, save it as InPage 2000–2005 or export it as Unicode text.'
-    );
-  }
-  throw new InPageFormatError('This file is not an InPage document (it may be an old Word or Excel file).');
+  const { stream, version } = documentStream(new OleFile(bytes));
+  const text = version === 3 ? readTextV3(stream) : readTextV1(stream);
+  if (text) return storiesFromText(text);
+  if (version === 1) return parseInPage100(stream);
+  throw new InPageFormatError('No text was found in this InPage document.');
 }
 
 /** True when a .txt file looks like InPage's own text export (0x04-prefixed Urdu codes). */
@@ -125,17 +154,58 @@ export interface InPageImport {
   project: DocumentProject;
   unreadable: number;
   paragraphs: number;
+  /** True when the pages were rebuilt as InPage laid them out (not just the text). */
+  layout: boolean;
+  /** Which InPage generation wrote the file: 1 (InPage 1.x–2005) or 3 (2009 and later). */
+  version?: 1 | 3;
 }
+
+const titleOf = (fileName: string) => fileName.replace(/\.(inp|b0\d|txt)$/i, '') || 'InPage_Document';
 
 /** Builds a Qalam document from an InPage file (.inp, .B01, or InPage-exported .txt). */
 export function inPageBytesToProject(bytes: Uint8Array, fileName: string): InPageImport {
-  const parsed = isOleFile(bytes) ? parseInPageFile(bytes) : parseInPageText(bytes);
-  const text = storiesToText(parsed.stories);
-  if (!text) throw new InPageFormatError('No text was found in this InPage document.');
-  const title = fileName.replace(/\.(inp|b0\d|txt)$/i, '') || 'InPage_Document';
+  const title = titleOf(fileName);
+  if (isOleFile(bytes)) {
+    const ole = new OleFile(bytes);
+    const { stream, version } = documentStream(ole);
+    const text = version === 3 ? readTextV3(stream) : readTextV1(stream);
+    if (text) {
+      const pictures = (name: string) => ole.stream(name);
+      const built = buildLayout(stream, text, title, pictures);
+      if (built && built.frames > 0) {
+        return { project: built.project, unreadable: built.unreadable, paragraphs: built.paragraphs, layout: true, version };
+      }
+    }
+    const parsed = text ? storiesFromText(text) : version === 1 ? parseInPage100(stream) : null;
+    if (!parsed) throw new InPageFormatError('No text was found in this InPage document.');
+    return { ...textOnly(parsed, title, stream), version };
+  }
+  return textOnly(parseInPageText(bytes), title, null);
+}
+
+function textOnly(parsed: InPageParseResult, title: string, stream: Uint8Array | null): InPageImport {
+  const body = storiesToText(parsed.stories);
+  if (!body) throw new InPageFormatError('No text was found in this InPage document.');
+  const project = layoutTextAsProject(body, title, 'inp');
+  const geometry = stream ? readPageGeometry(stream) : null;
+  if (geometry) {
+    const setup = pageSetupFromGeometry(geometry);
+    const dx = setup.margins.left - project.pageSetup.margins.left;
+    const dy = setup.margins.top - project.pageSetup.margins.top;
+    const contentWidth = setup.widthMm - setup.margins.left - setup.margins.right;
+    for (const page of project.pages) {
+      for (const el of page.elements) {
+        el.x += dx;
+        el.y += dy;
+        el.width = contentWidth;
+      }
+    }
+    project.pageSetup = { ...setup, direction: project.pageSetup.direction };
+  }
   return {
-    project: layoutTextAsProject(text, title, 'inp'),
+    project,
     unreadable: parsed.unreadable,
     paragraphs: parsed.stories.reduce((n, s) => n + s.filter((p) => p.trim()).length, 0),
+    layout: false,
   };
 }

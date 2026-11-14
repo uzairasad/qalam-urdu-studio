@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.6 — 2026-11-15
+
+- Opens InPage 2009 and later documents (`.inp` with Unicode text).
+- InPage documents now open with their layout, not just their text: the page size and margins,
+  every page, each text frame where InPage put it with the text InPage set in it (a story
+  running through linked frames breaks exactly where it did in InPage, page by page), columns,
+  rotated frames, fonts, sizes, bold, colours, alignment and line spacing, frame borders and
+  fills, lines, boxes, ellipses and slanted shapes, pictures, table rows, page numbers, and
+  everything master pages put on each page. InPage's fonts are more compact than the bundled
+  ones, so text that wouldn't fit its frame is set a little smaller.
+- Pictures with transparent areas no longer show a grey background.
+
 ## 0.1.5 — 2026-11-15
 
 - Opens real InPage documents: `.inp` files from InPage 1.x, 2.x, 2000, XP 2004 and 2005, the
