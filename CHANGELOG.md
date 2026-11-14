@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.4 — 2026-11-14
 
 - In-app updates. The desktop apps check GitHub for a new version (File → About → Check for
   updates, or automatically at start-up, at most once a day; you can turn this off), then
