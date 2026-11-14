@@ -9,7 +9,9 @@
 # Releasing: push a commit to main that sets a new version in package.json. If tag vX.Y.Z doesn't
 # exist yet, the plan job creates it on that commit and the release is built and published with
 # SHA256SUMS.txt. (No tag push needed, so it works where tag pushes aren't allowed; pushing a
-# tag vX.Y.Z yourself still works too, and whichever run comes second skips.)
+# tag vX.Y.Z yourself still works too, and whichever run comes second skips.) If a release run
+# fails partway, the release stays a draft; the next push to main that touches this file or
+# package.json builds and publishes it again.
 # Run by hand (Actions > Release > Run workflow) it only builds and keeps the files as workflow
 # artifacts; nothing is published. Tick "android_only" to build just the APK.
 name: Release
@@ -66,8 +68,15 @@ jobs:
             fi
           elif [ "$GITHUB_EVENT_NAME" = push ]; then
             if git ls-remote --exit-code --tags origin "refs/tags/v$v" >/dev/null; then
-              echo "v$v is already tagged: no new version, nothing to release"
-              echo "build=false" >> "$GITHUB_OUTPUT"
+              if [ "$(gh release view "v$v" --repo "$GITHUB_REPOSITORY" --json isDraft -q .isDraft 2>/dev/null)" = true ]; then
+                # An earlier run tagged it but didn't finish publishing: build and publish again.
+                echo "v$v is tagged but its release is still a draft: finishing it"
+                echo "build=true" >> "$GITHUB_OUTPUT"
+                echo "tag=v$v" >> "$GITHUB_OUTPUT"
+              else
+                echo "v$v is already tagged: no new version, nothing to release"
+                echo "build=false" >> "$GITHUB_OUTPUT"
+              fi
             else
               git tag "v$v" "$GITHUB_SHA"
               git push origin "v$v"
@@ -190,6 +199,8 @@ jobs:
           releaseBody: See CHANGELOG.md. Verify downloads against SHA256SUMS.txt.
           releaseDraft: true
           prerelease: false
+          # The four builds update the release's latest.json at the same time; retry on a clash.
+          retryAttempts: 3
 
       - name: Portable zip (Windows)
         if: runner.os == 'Windows'
