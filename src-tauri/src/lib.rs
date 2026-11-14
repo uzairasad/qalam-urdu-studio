@@ -34,9 +34,7 @@ const RELEASES_PREFIX: &str = "https://github.com/uzairasad/qalam-urdu-studio/re
 
 /// Files the editor can open (see `handleOpenFile` in `src/App.tsx`).
 /// `inp`/`b01`: InPage documents and the backups InPage keeps next to them.
-const OPENABLE_EXTENSIONS: &[&str] = &[
-    "qlm", "qpg", "inp", "b01", "docx", "pdf", "txt", "json",
-];
+const OPENABLE_EXTENSIONS: &[&str] = &["qlm", "qpg", "inp", "b01", "docx", "pdf", "txt", "json"];
 
 /// The only web pages the app opens in the system browser (About box links). The webview has
 /// no general "open URL" permission; it asks for one of these by name.
@@ -547,6 +545,8 @@ mod tests {
     #[test]
     fn openable_extensions_ignore_case() {
         assert!(is_openable(Path::new("x.DOCX")));
+        assert!(is_openable(Path::new("Sample.INP")));
+        assert!(is_openable(Path::new("Sample.B01")));
         assert!(!is_openable(Path::new("x.exe")));
         assert!(!is_openable(Path::new("noext")));
     }

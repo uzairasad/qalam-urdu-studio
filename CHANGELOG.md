@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Opens real InPage documents: `.inp` files from InPage 1.x, 2.x, 2000, XP 2004 and 2005, the
+  `.B01` backups InPage keeps next to them, and text exported from InPage. The Urdu, Arabic,
+  Persian and English text comes in as Unicode with its paragraphs, vowel marks, numbers and
+  tables, laid out on A4 pages. The original page layout isn't carried over yet, and files from
+  InPage 2009 and later aren't supported yet.
+- "Save As InPage (.inp)" saved Qalam's own format under an InPage name, which InPage couldn't
+  open. It is now **Export for InPage 2000–2005 (.txt)**: the text in InPage's own encoding, for
+  File → Import in old InPage. Documents saved the old way still open.
+
 ## 0.1.4 — 2026-11-14
 
 - In-app updates. The desktop apps check GitHub for a new version (File → About → Check for

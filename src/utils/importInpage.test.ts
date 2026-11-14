@@ -109,16 +109,16 @@ test('decodes InPage character codes (bytes as InPage itself writes them)', () =
 });
 
 test('normalises InPage storage conventions to standard Unicode Urdu', () => {
-  assert.equal(normalizeInPageText('آپ'), 'آپ'); // alif + madda
-  assert.equal(normalizeInPageText('ؤ'), 'ؤ');
-  assert.equal(normalizeInPageText('ۂ'), 'ۂ');
-  assert.equal(normalizeInPageText('إنی'), 'إنی');
-  assert.equal(normalizeInPageText('عظےم'), 'عظیم'); // medial bari ye
-  assert.equal(normalizeInPageText('کے لیے'), 'کے لیے'); // final stays
-  assert.equal(normalizeInPageText('۲۱ ۰۲ ۷'), '۱۲ ۲۰ ۷'); // numbers stored reversed
-  assert.equal(normalizeInPageText('۰،۳ ۷۴۹۱/۸/۴۱'), '۳،۰ ۱۴/۸/۱۹۴۷'); // with separators
-  assert.equal(normalizeInPageText('ل ِ'), 'لِ'); // vowel mark after a space
-  assert.equal(normalizeInPageText('بََ'), 'بً'); // two zabars → tanween
+  assert.equal(normalizeInPageText('\u0627\u0653\u067E'), 'آپ'); // alif + madda
+  assert.equal(normalizeInPageText('\u0648\u0654'), 'ؤ');
+  assert.equal(normalizeInPageText('\u06C1\u0654'), 'ۂ');
+  assert.equal(normalizeInPageText('\u0627\u0655\u0646\u06CC'), 'إنی');
+  assert.equal(normalizeInPageText('\u0639\u0638\u06D2\u0645'), 'عظیم'); // medial bari ye
+  assert.equal(normalizeInPageText('\u06A9\u06D2 \u0644\u06CC\u06D2'), 'کے لیے'); // final stays
+  assert.equal(normalizeInPageText('\u06F2\u06F1 \u06F0\u06F2 \u06F7'), '۱۲ ۲۰ ۷'); // numbers stored reversed
+  assert.equal(normalizeInPageText('\u06F0\u060C\u06F3 \u06F7\u06F4\u06F9\u06F1/\u06F8/\u06F4\u06F1'), '۳،۰ ۱۴/۸/۱۹۴۷'); // with separators
+  assert.equal(normalizeInPageText('\u0644 \u0650'), 'لِ'); // vowel mark after a space
+  assert.equal(normalizeInPageText('\u0628\u064E\u064E'), 'بً'); // two zabars → tanween
 });
 
 test('export and import round-trip Urdu, Arabic marks, numbers and English', () => {
@@ -129,9 +129,9 @@ test('export and import round-trip Urdu, Arabic marks, numbers and English', () 
 });
 
 test('a lone hamza reads as ء, a joined one as ئ', () => {
-  assert.equal(normalizeInPageText('ثنائ محمد'), 'ثناء محمد');
-  assert.equal(normalizeInPageText('طائوس'), 'طائوس');
-  assert.equal(normalizeInPageText('گئی'), 'گئی');
+  assert.equal(normalizeInPageText('\u062B\u0646\u0627\u0626 \u0645\u062D\u0645\u062F'), 'ثناء محمد');
+  assert.equal(normalizeInPageText('\u0637\u0627\u0626\u0648\u0633'), 'طائوس');
+  assert.equal(normalizeInPageText('\u06AF\u0626\u06CC'), 'گئی');
 });
 
 test('finds paragraphs and stories in an InPage100 stream', () => {

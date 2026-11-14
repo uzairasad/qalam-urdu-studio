@@ -35,6 +35,11 @@ Linux and Android, and in any modern browser.
 - **Urdu dictionary.** Meanings, synonyms and antonyms, available offline.
 - **Open and export.** Qalam documents (`.qlm`); open Word, PDF and text files; export PDF,
   Word, PNG, HTML and Unicode text.
+- **Opens old InPage files.** Documents from InPage 1.x, 2.x, 2000, XP 2004 and 2005 (`.inp`,
+  the `.B01` backups next to them, and InPage text exports) open as Unicode Urdu, ready to
+  edit and re-typeset: the text and paragraphs come across; the original page layout doesn't
+  yet. **Export for InPage 2000–2005** writes text the other way, in InPage's own encoding,
+  for File → Import in old InPage.
 - **Print-ready.** Print preview and native printing at the exact physical page size.
 - **Works offline.** Nothing is loaded from the internet once the app is installed.
 - **Updates itself.** The desktop apps install signed updates in place (File → About → Check for
@@ -100,6 +105,11 @@ So Qalam is built in layers:
   GitHub release, check the download's signature against the key built into the app, install
   it and restart. Portable and .deb/.rpm copies, and the Android app, are sent to the download
   page instead; the web app updates itself. The check only asks GitHub for the latest release.
+- **Reading InPage.** A `.inp` file is an OLE compound file; Qalam reads it with a small
+  built-in reader (`src/utils/ole.ts`), finds the paragraph records in its `InPage100`
+  stream, and maps InPage's two-byte character codes to Unicode (`src/utils/inpageText.ts`),
+  fixing the format's quirks: numbers stored reversed, ے used for medial ی, one code for ئ and
+  ء, and letters stored as letter + hamza or madda.
 - **Fonts included.** All typesetting fonts are bundled (`src/fonts.css`), so pages look the
   same everywhere and work with no network connection.
 

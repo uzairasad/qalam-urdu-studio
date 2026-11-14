@@ -31,7 +31,9 @@ before dev builds dropped dependency debug info in `Cargo.toml`).
 | `src/components/DocumentCanvas.tsx` | Page canvas: frames, selection, layout |
 | `src/components/RibbonToolbar.tsx` | The ribbon (largest UI file) |
 | `src/components/*Modal.tsx` | Dialogs: dictionary, keyboard, setup, print preview, find/replace… |
-| `src/utils/export*.ts`, `import*.ts` | PDF, Word, PNG, text, InPage export; Word/PDF/text import |
+| `src/utils/export*.ts`, `import*.ts` | PDF, Word, PNG, text export; Word/PDF/text import |
+| `src/utils/ole.ts`, `inpageText.ts`, `importInpage.ts` | Real InPage files: OLE reader, InPage↔Unicode table and fixes, `InPage100` paragraph records → pages; `exportInpage.ts` writes InPage-encoded text |
+| `src/utils/textLayout.ts` | Plain text → A4 pages of text frames (used by the .txt and InPage importers) |
 | `src/utils/phoneticKeyboard.ts` | Urdu keyboard layouts |
 | `src/utils/urduDict*.ts` | Offline Urdu dictionary data and lookup |
 | `src/utils/templates.ts` | Page templates |
@@ -50,6 +52,10 @@ before dev builds dropped dependency debug info in `Cargo.toml`).
 - All fonts are bundled (offline is a feature). Don't add fonts or data loaded from the network.
 - The webview has no fs permissions: Rust only reads files the OS handed over (`OpenQueue.allowed`)
   and only writes where the user chose in a Save dialog.
+- InPage: never commit real InPage documents (the user's family archive is private); tests
+  build synthetic InPage bytes. Classic InPage stores Urdu numbers reversed, medial ی as the
+  ے code (A5) only sometimes (A4 is usual), and one code (A3) for ئ/ء. Newer InPage (2009+,
+  Unicode) files have no `InPage100` stream and aren't supported yet.
 - Native printing is desktop-only (`#[cfg(desktop)]`); Android falls back to `window.print()`.
 - Autosave keys in localStorage include legacy names (`qalampage_autosave_v1`, `inpage_autosave_v4`)
   that are still read for migration; don't remove them.
