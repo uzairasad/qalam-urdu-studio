@@ -33,7 +33,10 @@ const UPDATE_PROGRESS_EVENT: &str = "qalam://update-progress";
 const RELEASES_PREFIX: &str = "https://github.com/uzairasad/qalam-urdu-studio/releases/";
 
 /// Files the editor can open (see `handleOpenFile` in `src/App.tsx`).
-const OPENABLE_EXTENSIONS: &[&str] = &["qlm", "qpg", "inp", "docx", "pdf", "txt", "json"];
+/// `inp`/`b01`: InPage documents and the backups InPage keeps next to them.
+const OPENABLE_EXTENSIONS: &[&str] = &[
+    "qlm", "qpg", "inp", "b01", "docx", "pdf", "txt", "json",
+];
 
 /// The only web pages the app opens in the system browser (About box links). The webview has
 /// no general "open URL" permission; it asks for one of these by name.

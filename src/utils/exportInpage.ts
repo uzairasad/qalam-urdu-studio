@@ -1,23 +1,23 @@
 import { DocumentProject } from '../types/inpage';
 import { saveFile } from '../platform/native';
+import { encodeInPageText } from './inpageText';
+import { projectToPlainText } from './exportTxt';
 
 /**
  * Strips extension from project filename cleanly.
  */
 export function getProjectBaseName(fileName: string): string {
-  return (fileName || 'Qalam_Document').replace(/\.(qlm|qpg|inp|json)$/i, '') || 'Qalam_Document';
+  return (fileName || 'Qalam_Document').replace(/\.(qlm|qpg|inp|b0\d|json)$/i, '') || 'Qalam_Document';
 }
 
 /**
- * Saves the full editable document with a `.inp` extension.
+ * Writes the document's text in classic InPage encoding, as a .txt file that InPage 2000, XP
+ * 2004 and 2005 can bring in with File → Import (the same format their File → Export writes).
+ * Layout isn't carried over: InPage text import is text only.
  */
-export async function downloadProjectAsInp(project: DocumentProject): Promise<string | null> {
-  const baseName = getProjectBaseName(project.fileName);
-  const outName = `${baseName}.inp`;
-  const payload = {
-    ...project,
-    fileName: outName,
-    savedBy: 'Qalam Urdu Studio',
-  };
-  return saveFile(outName, JSON.stringify(payload, null, 2), 'application/json');
+export async function exportForInPage(project: DocumentProject): Promise<{ saved: string | null; unmappable: number }> {
+  const { bytes, unmappable } = encodeInPageText(projectToPlainText(project, false));
+  const outName = `${getProjectBaseName(project.fileName)} (InPage).txt`;
+  const saved = await saveFile(outName, bytes, 'text/plain');
+  return { saved, unmappable };
 }

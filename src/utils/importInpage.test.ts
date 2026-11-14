@@ -1,0 +1,183 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { inPageBytesToProject, looksLikeInPageText, parseInPage100, parseInPageFile } from './importInpage.ts';
+import { decodeInPageBytes, encodeInPageText, normalizeInPageText } from './inpageText.ts';
+import { isOleFile, OleFile } from './ole.ts';
+
+// --- Synthetic InPage data (made for these tests; no real documents in the repository) -------
+
+/** Unicode → InPage bytes, through the exporter (itself tested below against hand-made bytes). */
+const ip = (text: string) => encodeInPageText(text).bytes;
+
+const u32 = (n: number) => [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >>> 24) & 0xff];
+
+/** One paragraph record: [u32 length][text][0x0D], then `attrs` bytes of paragraph attributes. */
+function para(text: Uint8Array, attrs = 5): number[] {
+  return [...u32(text.length + 1), ...text, 0x0d, ...new Array(attrs).fill(0)];
+}
+
+/** An "InPage100" stream: some header bytes, then stories separated by non-text data. */
+function inpage100(stories: string[][]): Uint8Array {
+  const out: number[] = [0x00, 0x00, 0x02, 0x00, 0x01, 0x00, 0xff, 0xfe, 0x80, 0x00]; // binary noise
+  for (const story of stories) {
+    for (const p of story) out.push(...para(ip(p)));
+    out.push(0xff, 0x7f, 0x00, 0x13, 0x88, 0x01, 0x02, 0x03, 0x99, 0xab, 0xcd); // frame data between stories
+  }
+  return new Uint8Array(out);
+}
+
+/**
+ * A minimal OLE compound file (512-byte sectors) holding `big` as a regular stream named
+ * InPage100 (padded past the 4096-byte mini-stream cutoff) and `small` in the mini stream.
+ */
+function buildOle(big: Uint8Array, small: Uint8Array): Uint8Array {
+  const S = 512;
+  const END = 0xfffffffe;
+  const bigData = new Uint8Array(Math.max(4096, big.length));
+  bigData.set(big);
+  const miniContainer = new Uint8Array(Math.ceil(small.length / 64) * 64 || 64);
+  miniContainer.set(small);
+  const miniSectors = miniContainer.length / 64;
+  const containerSectors = Math.ceil(miniContainer.length / S);
+  const bigSectors = Math.ceil(bigData.length / S);
+  // Sector map: 0 FAT, 1 directory, 2 mini FAT, 3.. mini stream container, then the big stream.
+  const firstContainer = 3;
+  const firstBig = firstContainer + containerSectors;
+  const total = firstBig + bigSectors;
+
+  const file = new Uint8Array(S * (total + 1));
+  const dv = new DataView(file.buffer);
+  [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1].forEach((b, i) => (file[i] = b));
+  dv.setUint16(0x18, 0x3e, true);
+  dv.setUint16(0x1a, 3, true);
+  dv.setUint16(0x1c, 0xfffe, true);
+  dv.setUint16(0x1e, 9, true);
+  dv.setUint16(0x20, 6, true);
+  dv.setUint32(0x2c, 1, true); // FAT sectors
+  dv.setUint32(0x30, 1, true); // first directory sector
+  dv.setUint32(0x38, 4096, true); // mini stream cutoff
+  dv.setUint32(0x3c, 2, true); // first mini FAT sector
+  dv.setUint32(0x40, 1, true);
+  dv.setUint32(0x44, END, true); // no DIFAT sectors
+  for (let i = 0; i < 109; i++) dv.setUint32(0x4c + i * 4, i === 0 ? 0 : 0xffffffff, true);
+
+  const sector = (n: number) => S * (n + 1);
+  const fat = new Array(S / 4).fill(0xffffffff);
+  fat[0] = 0xfffffffd;
+  fat[1] = END;
+  fat[2] = END;
+  for (let i = 0; i < containerSectors; i++) fat[firstContainer + i] = i + 1 < containerSectors ? firstContainer + i + 1 : END;
+  for (let i = 0; i < bigSectors; i++) fat[firstBig + i] = i + 1 < bigSectors ? firstBig + i + 1 : END;
+  fat.forEach((v, i) => dv.setUint32(sector(0) + i * 4, v, true));
+
+  const miniFat = new Array(S / 4).fill(0xffffffff);
+  for (let i = 0; i < miniSectors; i++) miniFat[i] = i + 1 < miniSectors ? i + 1 : END;
+  miniFat.forEach((v, i) => dv.setUint32(sector(2) + i * 4, v, true));
+
+  const dirEntry = (index: number, name: string, type: number, start: number, size: number, child = 0xffffffff, right = 0xffffffff) => {
+    const o = sector(1) + index * 128;
+    for (let i = 0; i < name.length; i++) dv.setUint16(o + i * 2, name.charCodeAt(i), true);
+    dv.setUint16(o + 64, (name.length + 1) * 2, true);
+    file[o + 66] = type;
+    dv.setUint32(o + 68, 0xffffffff, true);
+    dv.setUint32(o + 72, right, true);
+    dv.setUint32(o + 76, child, true);
+    dv.setUint32(o + 116, start, true);
+    dv.setUint32(o + 120, size, true);
+  };
+  dirEntry(0, 'Root Entry', 5, firstContainer, miniContainer.length, 1);
+  dirEntry(1, 'InPage100', 2, firstBig, bigData.length, 0xffffffff, 2);
+  dirEntry(2, 'DocumentInfo', 2, 0, small.length);
+
+  file.set(miniContainer, sector(firstContainer));
+  file.set(bigData, sector(firstBig));
+  return file;
+}
+
+// --- Tests ------------------------------------------------------------------------------------
+
+test('decodes InPage character codes (bytes as InPage itself writes them)', () => {
+  // اسلامی written as InPage 2000 stores it, plus an English word and a CR LF line break.
+  const bytes = new Uint8Array([
+    0x04, 0x81, 0x04, 0x92, 0x04, 0x9e, 0x04, 0x81, 0x04, 0x9f, 0x04, 0xa4, 0x04, 0x20,
+    0x49, 0x6e, 0x50, 0x61, 0x67, 0x65, 0x0d, 0x0a, 0x04, 0xd1,
+  ]);
+  const { text, unreadable } = decodeInPageBytes(bytes);
+  assert.equal(text, 'اسلامی InPage\n۱');
+  assert.equal(unreadable, 0);
+  assert.equal(decodeInPageBytes(new Uint8Array([0x04, 0x7c, 0x04, 0x81])).unreadable, 1);
+});
+
+test('normalises InPage storage conventions to standard Unicode Urdu', () => {
+  assert.equal(normalizeInPageText('آپ'), 'آپ'); // alif + madda
+  assert.equal(normalizeInPageText('ؤ'), 'ؤ');
+  assert.equal(normalizeInPageText('ۂ'), 'ۂ');
+  assert.equal(normalizeInPageText('إنی'), 'إنی');
+  assert.equal(normalizeInPageText('عظےم'), 'عظیم'); // medial bari ye
+  assert.equal(normalizeInPageText('کے لیے'), 'کے لیے'); // final stays
+  assert.equal(normalizeInPageText('۲۱ ۰۲ ۷'), '۱۲ ۲۰ ۷'); // numbers stored reversed
+  assert.equal(normalizeInPageText('۰،۳ ۷۴۹۱/۸/۴۱'), '۳،۰ ۱۴/۸/۱۹۴۷'); // with separators
+  assert.equal(normalizeInPageText('ل ِ'), 'لِ'); // vowel mark after a space
+  assert.equal(normalizeInPageText('بََ'), 'بً'); // two zabars → tanween
+});
+
+test('export and import round-trip Urdu, Arabic marks, numbers and English', () => {
+  const text = 'آپ کیسے ہیں؟ پایۂ تکمیل\nسال ۱۹۴۷ء — Lahore 1947\nمؤمن إنّی';
+  const { bytes, unmappable } = encodeInPageText(text);
+  assert.equal(unmappable, 1); // the em dash has no InPage code
+  assert.equal(normalizeInPageText(decodeInPageBytes(bytes).text), text.replace('—', ''));
+});
+
+test('a lone hamza reads as ء, a joined one as ئ', () => {
+  assert.equal(normalizeInPageText('ثنائ محمد'), 'ثناء محمد');
+  assert.equal(normalizeInPageText('طائوس'), 'طائوس');
+  assert.equal(normalizeInPageText('گئی'), 'گئی');
+});
+
+test('finds paragraphs and stories in an InPage100 stream', () => {
+  const stream = inpage100([
+    ['اسلامی دنیا کا عظیم شاعر', 'علامہ اقبال'],
+    ['Price: 500 per month', '', 'ختم شد'],
+  ]);
+  const { stories, unreadable } = parseInPage100(stream);
+  assert.equal(unreadable, 0);
+  assert.deepEqual(stories, [
+    ['اسلامی دنیا کا عظیم شاعر', 'علامہ اقبال'],
+    ['Price: 500 per month', '', 'ختم شد'],
+  ]);
+});
+
+test('paragraphs that follow each other with no attribute bytes stay in one story', () => {
+  const out = [...para(ip('پہلی سطر'), 0), ...para(ip('دوسری سطر'), 5), ...para(ip('تیسری'), 0)];
+  assert.deepEqual(parseInPage100(new Uint8Array(out)).stories, [['پہلی سطر', 'دوسری سطر', 'تیسری']]);
+});
+
+test('reads a whole .inp compound file, from regular and mini streams', () => {
+  const stream = inpage100([['قاری محمد فصیح الدین', '۱۔ مجھ میں ان کی ثنا کا']]);
+  const info = new Uint8Array(300).map((_, i) => i & 0xff);
+  const file = buildOle(stream, info);
+  assert.ok(isOleFile(file));
+  const ole = new OleFile(file);
+  assert.deepEqual(ole.streamNames().sort(), ['DocumentInfo', 'InPage100']);
+  assert.deepEqual(ole.stream('documentinfo'), info);
+  assert.deepEqual(ole.stream('InPage100')!.subarray(0, stream.length), stream);
+  assert.deepEqual(parseInPageFile(file).stories, [['قاری محمد فصیح الدین', '۱۔ مجھ میں ان کی ثنا کا']]);
+
+  const { project, paragraphs, unreadable } = inPageBytesToProject(file, 'naat.inp');
+  assert.equal(paragraphs, 2);
+  assert.equal(unreadable, 0);
+  assert.equal(project.fileName, 'naat.qlm');
+  assert.equal(project.pageSetup.direction, 'rtl');
+  const texts = project.pages.flatMap((p) => p.elements.map((e) => ('text' in e ? e.text : '')));
+  assert.ok(texts.join('\n').includes('قاری محمد فصیح الدین'));
+});
+
+test('recognises InPage-exported text files but not ordinary text', () => {
+  assert.ok(looksLikeInPageText(ip('یہ اِن پیج سے نکالی گئی تحریر ہے')));
+  assert.ok(!looksLikeInPageText(new TextEncoder().encode('Plain English text, nothing special here.')));
+  assert.ok(!looksLikeInPageText(new TextEncoder().encode('یونیکوڈ اردو متن')));
+});
+
+test('rejects files that are not InPage documents', () => {
+  assert.throws(() => parseInPageFile(new TextEncoder().encode('{"pages": []}')), /not an InPage document/);
+});

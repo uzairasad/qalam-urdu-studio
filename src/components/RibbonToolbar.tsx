@@ -152,7 +152,7 @@ interface RibbonToolbarProps {
   onOpenPdf: () => void;
   onOpenTxt: () => void;
   onSave: () => void;
-  onSaveAsInp: () => void;
+  onExportForInPage: () => void;
   onExportPdf: () => void;
   onExportDocx: () => void;
   onExportTxt: () => void;
@@ -218,7 +218,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
   onOpenPdf,
   onOpenTxt,
   onSave,
-  onSaveAsInp,
+  onExportForInPage,
   onExportPdf,
   onExportDocx,
   onExportTxt,
@@ -604,7 +604,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                         >
                           <span className="flex items-center gap-2">
                             <FolderOpen className="w-4 h-4 text-amber-600 group-hover:text-white transition-colors" />
-                            <span>Qalam / InPage (.qlm / .inp)...</span>
+                            <span>Qalam / InPage (.qlm / .inp / .B01)...</span>
                           </span>
                         </button>
                       </div>
@@ -638,13 +638,13 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                   onMouseEnter={() => handleDesktopSubmenuHover(null)}
                   onClick={() => {
                     setFileMenuOpen(false);
-                    onSaveAsInp();
+                    onExportForInPage();
                   }}
                   className={fileItemClass}
                 >
                   <span className="flex items-center gap-2">
                     <FileOutput className="w-4 h-4 text-indigo-600 group-hover:text-white transition-colors" />
-                    <span>Save As InPage (.inp)...</span>
+                    <span>Export for InPage 2000–2005 (.txt)...</span>
                   </span>
                 </button>
 

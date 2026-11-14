@@ -44,7 +44,9 @@ import { TEMPLATES } from './utils/templates';
 import { URDU_NUMERALS, stripUrduDiacritics } from './utils/phoneticKeyboard';
 import { resolveFontStack } from './utils/fonts';
 import { exportPageToPng } from './utils/exportPng';
-import { downloadProjectAsInp } from './utils/exportInpage';
+import { exportForInPage } from './utils/exportInpage';
+import { inPageBytesToProject, InPageFormatError, looksLikeInPageText } from './utils/importInpage';
+import { isOleFile } from './utils/ole';
 import { exportProjectToPdf } from './utils/exportPdf';
 import { exportProjectToDocx } from './utils/exportDocx';
 import { importDocxToProject } from './utils/importDocx';
@@ -763,20 +765,22 @@ export default function App() {
     showToast(`Saved ${saved}`);
   };
 
-  // Save As .inp file
-  const handleSaveAsInp = async () => {
-    const outName = await downloadProjectAsInp(project);
-    if (!outName) return;
-    setIsModified(false);
+  // Export the text for old InPage (2000 / XP 2004 / 2005), which can't read Unicode
+  const handleExportForInPage = async () => {
+    const { saved, unmappable } = await exportForInPage(project);
+    if (!saved) return;
     setDialog({
       isOpen: true,
       type: 'info',
-      title: 'Saved as .inp File',
-      message: `Saved "${outName}".\n\nNote: This .inp file preserves your full layout for reopening in Qalam Urdu Studio.\n\nTo share or print externally, use File → Export PDF Document (.pdf) or Export Word Document (.docx).`,
+      title: 'Exported for InPage',
+      message:
+        `Saved "${saved}" in InPage's own text encoding.\n\n` +
+        'In InPage 2000, XP 2004 or 2005, use File → Import to bring the text in, then lay it out there. ' +
+        'Only the text is exported, not the page layout.' +
+        (unmappable ? `\n\n${unmappable} character${unmappable === 1 ? '' : 's'} have no InPage equivalent and were left out.` : ''),
       onConfirm: () => {},
     });
   };
-
   // Export multi-page PDF (.pdf)
   const handleExportPdf = async () => {
     showToast('Generating PDF document...');
@@ -993,8 +997,42 @@ export default function App() {
     await openFile(file);
   };
 
+  /** Classic InPage documents (.inp, .B01 backups, InPage-exported .txt) → a new tab. */
+  const openInPage = (bytes: Uint8Array, fileName: string) => {
+    try {
+      const { project: imported, unreadable, paragraphs } = inPageBytesToProject(bytes, fileName);
+      openProjectInNewTab(imported);
+      showToast(
+        `Opened ${fileName} from InPage: ${paragraphs} paragraphs` +
+          (unreadable ? `, ${unreadable} character${unreadable === 1 ? '' : 's'} could not be read` : '') +
+          '. The text is in; the original page layout is not.',
+        7000
+      );
+    } catch (err) {
+      setDialog({
+        isOpen: true,
+        type: 'warning',
+        title: 'Open InPage Document',
+        message:
+          err instanceof InPageFormatError
+            ? err.message
+            : `Could not read this InPage document: ${err instanceof Error ? err.message : String(err)}`,
+        onConfirm: () => {},
+      });
+    }
+  };
+
   const openFile = async (file: File) => {
     const lowerName = file.name.toLowerCase();
+
+    // Real InPage files are OLE compound files; Qalam's own older ".inp" saves are JSON.
+    if (/\.(inp|b0\d)$/.test(lowerName) || lowerName.endsWith('.txt')) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (isOleFile(bytes) || (lowerName.endsWith('.txt') && looksLikeInPageText(bytes))) {
+        openInPage(bytes, file.name);
+        return;
+      }
+    }
 
     if (lowerName.endsWith('.docx')) {
       showToast('Opening Word document (.docx)...');
@@ -1394,7 +1432,7 @@ export default function App() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".qlm,.qpg,.inp,.docx,.pdf,.txt,.json"
+          accept=".qlm,.qpg,.inp,.b01,.docx,.pdf,.txt,.json"
           onChange={handleOpenFile}
           className="hidden"
         />
@@ -1492,7 +1530,7 @@ export default function App() {
         onOpenPdf={() => pdfFileInputRef.current?.click()}
         onOpenTxt={() => txtFileInputRef.current?.click()}
         onSave={handleSaveProject}
-        onSaveAsInp={handleSaveAsInp}
+        onExportForInPage={handleExportForInPage}
         onExportPdf={handleExportPdf}
         onExportDocx={handleExportDocx}
         onExportTxt={handleExportTxt}
@@ -1610,7 +1648,7 @@ export default function App() {
             className="fixed bottom-24 md:bottom-11 right-3 md:right-4 z-40 px-3 py-2 bg-slate-900/95 text-white text-xs font-medium rounded-md shadow-lg border border-slate-700 flex items-center gap-2 no-print animate-toast-in max-w-[calc(100vw-24px)]"
           >
             <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="truncate">{toastMessage}</span>
+            <span className="line-clamp-2">{toastMessage}</span>
           </div>
         )}
       </div>
@@ -1779,7 +1817,7 @@ export default function App() {
         isOpen={isDownloadOpen}
         onClose={() => setIsDownloadOpen(false)}
         onSaveProject={handleSaveProject}
-        onSaveAsInp={handleSaveAsInp}
+        onExportForInPage={handleExportForInPage}
         onExportPdf={handleExportPdf}
         onExportDocx={handleExportDocx}
         onExportPng={handleExportPng}

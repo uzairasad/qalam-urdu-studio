@@ -15,7 +15,8 @@ function resolvePageTokens(text: string, pageNumber: number, isRtl: boolean): st
   return (text || '').replace(/\{\{PAGE\}\}/g, localized);
 }
 
-export async function exportProjectToTxt(project: DocumentProject): Promise<string | null> {
+/** All the document's text in reading order: frames top to bottom, tables as tab-separated rows. */
+export function projectToPlainText(project: DocumentProject, pageMarkers = true): string {
   const pageChunks: string[] = [];
 
   for (const page of project.pages) {
@@ -48,14 +49,16 @@ export async function exportProjectToTxt(project: DocumentProject): Promise<stri
     if (parts.length > 0) {
       const body = parts.join('\n\n');
       pageChunks.push(
-        project.pages.length > 1 ? `--- Page ${page.pageNumber} ---\n\n${body}` : body
+        pageMarkers && project.pages.length > 1 ? `--- Page ${page.pageNumber} ---\n\n${body}` : body
       );
     }
   }
 
-  const content = '\uFEFF' + pageChunks.join('\n\n\n');
-  const baseName = getProjectBaseName(project.fileName);
-  const outName = `${baseName}.txt`;
+  return pageChunks.join(pageMarkers ? '\n\n\n' : '\n\n');
+}
 
-  return saveFile(outName, content, 'text/plain;charset=utf-8');
+export async function exportProjectToTxt(project: DocumentProject): Promise<string | null> {
+  const content = '﻿' + projectToPlainText(project);
+  const baseName = getProjectBaseName(project.fileName);
+  return saveFile(`${baseName}.txt`, content, 'text/plain;charset=utf-8');
 }

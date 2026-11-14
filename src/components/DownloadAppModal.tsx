@@ -19,7 +19,7 @@ interface DownloadAppModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaveProject: () => void;
-  onSaveAsInp: () => void;
+  onExportForInPage: () => void;
   onExportPdf: () => void;
   onExportDocx: () => void;
   onExportPng: () => void;
@@ -31,7 +31,7 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
   isOpen,
   onClose,
   onSaveProject,
-  onSaveAsInp,
+  onExportForInPage,
   onExportPdf,
   onExportDocx,
   onExportPng,
@@ -166,7 +166,7 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
               <div>
                 <h3 className="font-bold text-slate-900">3. Print, Preview &amp; Export Document</h3>
                 <p className="text-[11px] text-slate-600">
-                  Preview pages at exact 1:1 scale, export multi-page PDF or editable Word (<code>.docx</code>), save project files (<code>.qlm</code> / <code>.inp</code>), or export high-DPI PNG.
+                  Preview pages at exact 1:1 scale, export multi-page PDF or editable Word (<code>.docx</code>), save project files (<code>.qlm</code>), export text for old InPage, or export high-DPI PNG.
                 </p>
               </div>
             </div>
@@ -231,12 +231,12 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
                 type="button"
                 onClick={() => {
                   onClose();
-                  onSaveAsInp();
+                  onExportForInPage();
                 }}
                 className={btnClass}
               >
                 <Download className="w-3.5 h-3.5 text-blue-700" />
-                <span>Save .inp</span>
+                <span>Export for InPage</span>
               </button>
               <button
                 type="button"
