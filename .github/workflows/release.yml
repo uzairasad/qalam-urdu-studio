@@ -205,7 +205,8 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          # Not a secret (it would mask the word everywhere in the logs).
+          ANDROID_KEY_ALIAS: qalam
         run: |
           v=$(node -p "require('./package.json').version")
           out="Qalam-Urdu-Studio-$v-android-arm64.apk"
@@ -221,7 +222,7 @@ jobs:
             echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.p12"
             "$bt/zipalign" -f -p 4 "$apk" "$RUNNER_TEMP/aligned.apk"
             "$bt/apksigner" sign --ks "$RUNNER_TEMP/release.p12" --ks-type PKCS12 \
-              --ks-pass env:ANDROID_KEYSTORE_PASSWORD --ks-key-alias "${ANDROID_KEY_ALIAS:-qalam}" \
+              --ks-pass env:ANDROID_KEYSTORE_PASSWORD --ks-key-alias "$ANDROID_KEY_ALIAS" \
               --out "$out" "$RUNNER_TEMP/aligned.apk"
             rm -f "$RUNNER_TEMP/release.p12"
             "$bt/apksigner" verify --print-certs "$out"

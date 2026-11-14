@@ -17,13 +17,12 @@ build that GitHub Actions produced.
 ## Android
 
 The APK is a release build, signed with `apksigner` (APK signature scheme v2/v3) using the
-project's key:
+project's key (alias `qalam`, set in the workflow):
 
 | Secret | Value |
 | --- | --- |
 | `ANDROID_KEYSTORE_BASE64` | the PKCS#12 keystore, base64-encoded |
 | `ANDROID_KEYSTORE_PASSWORD` | its password |
-| `ANDROID_KEY_ALIAS` | `qalam` |
 
 The keystore itself is kept **outside this repository**. Back it up: Android only installs an
 update over an existing app when it's signed with the same key. If the key is lost, every user
@@ -44,7 +43,6 @@ openssl req -x509 -newkey rsa:4096 -sha256 -days 10950 -nodes \
 openssl pkcs12 -export -name qalam -inkey key.pem -in cert.pem -out release.p12
 base64 -w0 release.p12 | gh secret set ANDROID_KEYSTORE_BASE64
 gh secret set ANDROID_KEYSTORE_PASSWORD
-gh secret set ANDROID_KEY_ALIAS --body qalam
 ```
 
 ## Windows: Azure Trusted Signing
