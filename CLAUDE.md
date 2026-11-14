@@ -20,6 +20,8 @@ cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && carg
 
 Run lint, tests and (for Rust changes) fmt/clippy/test before committing; CI runs the same on Windows,
 macOS and Linux. `cargo clippy` needs `dist/` (run `npm run build:desktop` first).
+`target/` is only a build cache: `cargo clean` frees it whenever it gets large (it reached 17 GB
+before dev builds dropped dependency debug info in `Cargo.toml`).
 
 ## Map
 
