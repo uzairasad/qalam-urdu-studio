@@ -5,7 +5,8 @@
 //! shape Nastaliq with HarfBuzz/CoreText/DirectWrite, which no Rust-native GUI toolkit does yet.
 //! This crate gives the editor what a browser tab can't: native Save dialogs that write real
 //! files, native printing, opening documents from the command line / file manager / Finder,
-//! and one running instance that receives documents opened later.
+//! one running instance that receives documents opened later, signed in-app updates (desktop),
+//! and sizing the window to fit the screen at any display scaling.
 
 use std::{
     collections::HashSet,
@@ -23,6 +24,13 @@ use tauri_plugin_opener::OpenerExt;
 
 /// Event the frontend listens to; it then calls `take_pending_files`.
 const OPEN_FILES_EVENT: &str = "qalam://open-files";
+
+/// Download progress of an update being installed: `[bytes so far, total or null]`.
+#[cfg(desktop)]
+const UPDATE_PROGRESS_EVENT: &str = "qalam://update-progress";
+
+/// Release pages and downloads are the only other web addresses the app opens.
+const RELEASES_PREFIX: &str = "https://github.com/uzairasad/qalam-urdu-studio/releases/";
 
 /// Files the editor can open (see `handleOpenFile` in `src/App.tsx`).
 const OPENABLE_EXTENSIONS: &[&str] = &["qlm", "qpg", "inp", "docx", "pdf", "txt", "json"];
@@ -258,6 +266,151 @@ fn open_project_link(app: AppHandle, link: String) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Opens a release page or download (from the update check) in the default browser.
+#[tauri::command]
+fn open_release_link(app: AppHandle, url: String) -> Result<(), String> {
+    if !is_release_link(&url) {
+        return Err("Not a Qalam Urdu Studio release link".into());
+    }
+    app.opener()
+        .open_url(url, None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
+fn is_release_link(url: &str) -> bool {
+    url.starts_with(RELEASES_PREFIX) && !url.contains("..") && !url.chars().any(char::is_whitespace)
+}
+
+/// An update found by `check_update`, for the frontend.
+#[cfg(desktop)]
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateInfo {
+    version: String,
+    notes: Option<String>,
+    /// False for installs the updater can't replace (portable Windows copy, Linux .deb/.rpm):
+    /// those are pointed to the download page instead.
+    can_install: bool,
+}
+
+/// The update `check_update` found, kept for `install_update`.
+#[cfg(desktop)]
+#[derive(Default)]
+struct PendingUpdate(Mutex<Option<tauri_plugin_updater::Update>>);
+
+/// Whether this copy of the app was installed in a way the updater can replace in place.
+#[cfg(desktop)]
+fn self_updatable() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        // Only the AppImage updates itself; .deb and .rpm belong to the package manager.
+        std::env::var_os("APPIMAGE").is_some()
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // NSIS installs leave an uninstaller next to the program; MSI installs live in Program
+        // Files. Anything else is the portable copy, which must not turn into an installed one.
+        let Ok(exe) = std::env::current_exe() else {
+            return false;
+        };
+        let nsis = exe
+            .parent()
+            .is_some_and(|d| d.join("uninstall.exe").is_file());
+        let msi = ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"]
+            .iter()
+            .filter_map(std::env::var_os)
+            .any(|dir| exe.starts_with(dir));
+        nsis || msi
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    {
+        true
+    }
+}
+
+/// Asks the release feed whether a newer version exists. Only runs when the user checks (About
+/// box) or has automatic checks on; the only data sent is the request for the feed itself.
+#[cfg(desktop)]
+#[tauri::command]
+async fn check_update(
+    app: AppHandle,
+    pending: State<'_, PendingUpdate>,
+) -> Result<Option<UpdateInfo>, String> {
+    use tauri_plugin_updater::UpdaterExt;
+    let update = app
+        .updater()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(|e| e.to_string())?;
+    let info = update.as_ref().map(|u| UpdateInfo {
+        version: u.version.clone(),
+        notes: u.body.clone(),
+        can_install: self_updatable(),
+    });
+    *pending.0.lock().unwrap() = update;
+    Ok(info)
+}
+
+/// Downloads the update found by `check_update`, checks its signature, installs it and
+/// restarts the app.
+#[cfg(desktop)]
+#[tauri::command]
+async fn install_update(app: AppHandle, pending: State<'_, PendingUpdate>) -> Result<(), String> {
+    let update = pending
+        .0
+        .lock()
+        .unwrap()
+        .take()
+        .ok_or("No update to install. Check for updates again.")?;
+    let mut received: u64 = 0;
+    update
+        .download_and_install(
+            |chunk, total| {
+                received += chunk as u64;
+                let _ = app.emit(UPDATE_PROGRESS_EVENT, (received, total));
+            },
+            || {},
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    app.restart();
+}
+
+/// The window's sizes in the config are logical pixels. With display scaling turned up (150%,
+/// 200%...) on a small screen, the minimum size can be bigger than the screen, pushing the title
+/// bar or the status bar off-screen. Clamp the minimum to the monitor's work area, and keep the
+/// window inside it (it normally opens maximized).
+#[cfg(desktop)]
+fn fit_window_to_screen(window: &tauri::WebviewWindow) -> tauri::Result<()> {
+    use tauri::{LogicalSize, Size};
+    let Some(monitor) = window.current_monitor()?.or(window.primary_monitor()?) else {
+        return Ok(());
+    };
+    let scale = monitor.scale_factor();
+    let work: LogicalSize<f64> = monitor.work_area().size.to_logical(scale);
+    let outer: LogicalSize<f64> = window.outer_size()?.to_logical(scale);
+    let inner: LogicalSize<f64> = window.inner_size()?.to_logical(scale);
+    // Title bar and borders.
+    let frame_w = (outer.width - inner.width).max(0.0);
+    let frame_h = (outer.height - inner.height).max(0.0);
+
+    let min_w = 360f64.min(work.width - frame_w);
+    let min_h = 400f64.min(work.height - frame_h);
+    window.set_min_size(Some(Size::Logical(LogicalSize::new(min_w, min_h))))?;
+
+    if window.is_maximized()? || work.width < 900.0 || work.height < 600.0 {
+        return window.maximize();
+    }
+    if outer.width <= work.width * 0.95 && outer.height <= work.height * 0.95 {
+        return Ok(());
+    }
+    let width = inner.width.min(work.width * 0.95 - frame_w).max(min_w);
+    let height = inner.height.min(work.height * 0.95 - frame_h).max(min_h);
+    window.set_size(Size::Logical(LogicalSize::new(width, height)))?;
+    window.center()
+}
+
 fn queue_and_notify(app: &AppHandle, paths: Vec<PathBuf>) {
     if app.state::<OpenQueue>().push(paths) {
         let _ = app.emit(OPEN_FILES_EVENT, ());
@@ -281,6 +434,13 @@ pub fn run() {
         }));
     }
 
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .manage(PendingUpdate::default());
+    }
+
     let app = builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -292,6 +452,11 @@ pub fn run() {
                 let cwd = std::env::current_dir().ok();
                 app.state::<OpenQueue>()
                     .push(document_args(std::env::args(), cwd.as_deref()));
+                if let Some(window) = app.get_webview_window("main") {
+                    if let Err(e) = fit_window_to_screen(&window) {
+                        eprintln!("Could not fit the window to the screen: {e}");
+                    }
+                }
             }
             let _ = app;
             Ok(())
@@ -301,7 +466,12 @@ pub fn run() {
             read_document,
             save_file,
             print_document,
-            open_project_link
+            open_project_link,
+            open_release_link,
+            #[cfg(desktop)]
+            check_update,
+            #[cfg(desktop)]
+            install_update
         ])
         .build(tauri::generate_context!())
         .expect("error while building Qalam Urdu Studio");
@@ -354,6 +524,21 @@ mod tests {
         );
         assert!(PROJECT_LINKS.iter().all(|(_, u)| u.starts_with("https://")));
         assert_eq!(project_link("file:///etc/passwd"), None);
+    }
+
+    #[test]
+    fn only_release_links_open() {
+        assert!(is_release_link(
+            "https://github.com/uzairasad/qalam-urdu-studio/releases/latest"
+        ));
+        assert!(is_release_link("https://github.com/uzairasad/qalam-urdu-studio/releases/download/v0.2.0/Qalam-Urdu-Studio-0.2.0-android-arm64.apk"));
+        assert!(!is_release_link(
+            "https://github.com/someone/else/releases/latest"
+        ));
+        assert!(!is_release_link(
+            "https://github.com/uzairasad/qalam-urdu-studio/releases/../../evil"
+        ));
+        assert!(!is_release_link("file:///etc/passwd"));
     }
 
     #[test]

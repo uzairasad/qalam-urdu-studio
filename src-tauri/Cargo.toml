@@ -27,3 +27,5 @@ serde_json = "1"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"
+# Signed in-app updates from GitHub releases (desktop only; Android updates via the APK).
+tauri-plugin-updater = "2"

@@ -14,6 +14,36 @@ never blocks a release.
 Every release also includes `SHA256SUMS.txt`, so any download can be checked against the
 build that GitHub Actions produced.
 
+## In-app updates (desktop)
+
+The desktop apps update themselves from GitHub releases with Tauri's updater: they read
+`latest.json` from the latest release, download the new installer (NSIS/MSI on Windows, the
+app bundle on macOS, the AppImage on Linux), check its signature against the public key in
+`src-tauri/tauri.conf.json` (`plugins.updater.pubkey`), install it and restart. The portable
+Windows zip and Linux .deb/.rpm installs are pointed to the download page instead, as is the
+Android app (it installs over itself because the APK key never changes).
+
+The workflow builds the signed updater files and `latest.json` only when these secrets are set:
+
+| Secret | Value |
+| --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` | the private key file's contents (`qalam-updater.key`) |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | its password |
+
+Without them a release still builds; the apps then fall back to telling users about the new
+version and opening its download page.
+
+Keep the private key **outside this repository** and back it up. Installed apps only accept
+updates signed with it; if it's lost, make a new pair, put the new public key in
+`tauri.conf.json`, and users must install that release by hand once. To make a pair:
+
+```bash
+npx tauri signer generate -w qalam-updater.key       # asks for a password
+gh secret set TAURI_SIGNING_PRIVATE_KEY < qalam-updater.key
+gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+cat qalam-updater.key.pub                            # → plugins.updater.pubkey
+```
+
 ## Android
 
 The APK is a release build, signed with `apksigner` (APK signature scheme v2/v3) using the

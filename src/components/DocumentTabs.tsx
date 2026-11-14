@@ -35,7 +35,7 @@ export const DocumentTabs: React.FC<DocumentTabsProps> = ({
 
   return (
     <div
-      className="h-8 px-2 bg-slate-100 border-b border-slate-200 flex items-end gap-1 select-none shrink-0 relative z-20 no-print font-modern"
+      className="h-8 short:h-7 px-2 bg-slate-100 border-b border-slate-200 flex items-end gap-1 select-none shrink-0 relative z-20 no-print font-modern"
       dir="ltr"
     >
       <div

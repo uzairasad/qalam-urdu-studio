@@ -86,6 +86,8 @@ jobs:
       - run: npm ci
 
       # Signs only when the secrets exist (docs/SIGNING.md); otherwise builds unsigned.
+      # TAURI_SIGNING_PRIVATE_KEY also turns on in-app updates: signed updater artifacts and the
+      # latest.json feed the desktop apps check (tauri-action uploads it to the release).
       - name: Code signing setup
         id: signing
         shell: bash
@@ -102,8 +104,23 @@ jobs:
           AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
           AZURE_SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
           AZURE_CERT_PROFILE: ${{ vars.AZURE_CERT_PROFILE }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           export_vars() { for v in "$@"; do [ -n "${!v}" ] && echo "$v=${!v}" >> "$GITHUB_ENV"; done; return 0; }
+          # Extra Tauri config for this build, merged into one --config file at the end.
+          echo '{}' > signing.json
+          merge() { node -e "const f='signing.json',fs=require('fs'),a=JSON.parse(fs.readFileSync(f)),b=JSON.parse(process.argv[1]);
+            const m=(x,y)=>{for(const k in y)x[k]=y[k]&&typeof y[k]==='object'?m(x[k]||{},y[k]):y[k];return x};fs.writeFileSync(f,JSON.stringify(m(a,b)))" "$1"; }
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "Building signed updater artifacts"
+            # Multi-line secrets can't go through GITHUB_ENV as KEY=value.
+            { echo "TAURI_SIGNING_PRIVATE_KEY<<KEY_EOF"; echo "$TAURI_SIGNING_PRIVATE_KEY"; echo "KEY_EOF"; } >> "$GITHUB_ENV"
+            export_vars TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+            merge '{"bundle":{"createUpdaterArtifacts":true}}'
+          else
+            echo "::warning::No TAURI_SIGNING_PRIVATE_KEY secret: no in-app update feed for this build"
+          fi
           if [ "$RUNNER_OS" = macOS ] && [ -n "$APPLE_CERTIFICATE" ]; then
             echo "Signing (and notarizing, if APPLE_ID is set) the macOS app"
             export_vars APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
@@ -111,13 +128,13 @@ jobs:
             echo "Signing the Windows app with Azure Trusted Signing"
             cargo install trusted-signing-cli --locked
             export_vars AZURE_CLIENT_ID AZURE_CLIENT_SECRET AZURE_TENANT_ID
-            node -e "require('fs').writeFileSync('signing.json', JSON.stringify({bundle:{windows:{signCommand:
+            merge "$(node -e "console.log(JSON.stringify({bundle:{windows:{signCommand:
               'trusted-signing-cli -e ' + process.env.AZURE_SIGNING_ENDPOINT + ' -a ' + process.env.AZURE_SIGNING_ACCOUNT +
-              ' -c ' + process.env.AZURE_CERT_PROFILE + ' -d \"Qalam Urdu Studio\" %1'}}}))"
-            echo "args=--config signing.json" >> "$GITHUB_OUTPUT"
+              ' -c ' + process.env.AZURE_CERT_PROFILE + ' -d \"Qalam Urdu Studio\" %1'}}}))")"
           else
             echo "No signing secrets for $RUNNER_OS: building unsigned"
           fi
+          echo "args=--config signing.json" >> "$GITHUB_OUTPUT"
 
       - name: Build installers
         uses: tauri-apps/tauri-action@v0

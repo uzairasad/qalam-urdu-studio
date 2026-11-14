@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Short windows (a laptop at 150-200% display scaling, a phone in landscape): compact chrome so
+   the page keeps most of the height. */
+@custom-variant short (@media (max-height: 600px));
+
 @layer utilities {
   .font-nastaliq {
     font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Alvi Nastaleeq', 'Noori Nastaleeq', serif;

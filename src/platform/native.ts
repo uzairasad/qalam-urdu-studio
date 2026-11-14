@@ -13,6 +13,10 @@ import { PROJECT_LINKS, type ProjectLink } from '../appInfo';
 export const isNativeApp = (): boolean =>
   typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
+/** Phones and tablets (the Android app, or a mobile browser). */
+export const isMobile = (): boolean =>
+  typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
 type SaveData = Blob | string | Uint8Array | ArrayBuffer;
 
 async function toBytes(data: SaveData): Promise<Uint8Array> {

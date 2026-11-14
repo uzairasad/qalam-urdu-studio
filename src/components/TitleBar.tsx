@@ -15,6 +15,7 @@ import {
   Pencil,
   BookOpen,
   Eye,
+  RefreshCw,
 } from 'lucide-react';
 import { QalamBrandEmblem } from './DtpIcons';
 
@@ -36,6 +37,9 @@ interface TitleBarProps {
   onToggleLanguage: () => void;
   onCloseApp: () => void;
   onOpenDownload: () => void;
+  /** Set when a newer version was found: shows an "Update" button that opens the About box. */
+  update?: { version: string | null } | null;
+  onOpenUpdate?: () => void;
 }
 
 export const TitleBar: React.FC<TitleBarProps> = ({
@@ -56,6 +60,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onToggleLanguage,
   onCloseApp,
   onOpenDownload,
+  update,
+  onOpenUpdate,
 }) => {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
 
@@ -257,6 +263,18 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             {language.toUpperCase()}
           </span>
         </button>
+
+        {update && onOpenUpdate && (
+          <button
+            type="button"
+            onClick={onOpenUpdate}
+            title={update.version ? `Qalam Urdu Studio ${update.version} is available` : 'A new version is available'}
+            className="px-2 sm:px-2.5 h-7 font-semibold text-[11px] flex items-center gap-1.5 transition-colors whitespace-nowrap bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-md shadow-xs shrink-0 touch-manipulation"
+          >
+            <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden md:inline">Update{update.version ? ` ${update.version}` : ''}</span>
+          </button>
+        )}
 
         {!isNativeApp() && (
         <button

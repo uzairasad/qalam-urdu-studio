@@ -1,4 +1,4 @@
-# Every push and pull request: the web app type-checks and builds, and the Rust shell is
+# Every push and pull request: the web app type-checks, passes its tests and builds, and the Rust shell is
 # formatted, lint-clean and tested on Windows, macOS and Linux.
 name: CI
 
@@ -30,6 +30,8 @@ jobs:
       - run: npm ci
       - name: Type-check
         run: npm run lint
+      - name: Unit tests
+        run: npm test
       - name: PWA + single-file offline build
         run: npm run build
 

@@ -52,6 +52,8 @@ import { importPdfToProject } from './utils/importPdf';
 import { importTxtToProject } from './utils/importTxt';
 import { exportProjectToTxt } from './utils/exportTxt';
 import { onFilesOpenedByOS, printDocument, saveFile } from './platform/native';
+import { autoCheckDue } from './platform/updates';
+import { availableUpdate, useUpdates } from './components/Updates';
 
 const AUTOSAVE_KEY = 'qalam_studio_autosave_v1';
 const TABS_STORAGE_KEY = 'qalam_studio_tabs_v1';
@@ -172,12 +174,12 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, durationMs = 2400) => {
     setToastMessage(msg);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => {
       setToastMessage(null);
-    }, 2400);
+    }, durationMs);
   };
 
   // Context menu state
@@ -196,6 +198,8 @@ export default function App() {
   const [isWordCountOpen, setIsWordCountOpen] = useState(false);
   const [isDictionaryOpen, setIsDictionaryOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const updates = useUpdates();
+  const foundUpdate = availableUpdate(updates.status);
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
   const [dialog, setDialog] = useState<DialogOptions | null>(null);
@@ -220,6 +224,27 @@ export default function App() {
   const setIsModified = (modified: boolean) => {
     updateActiveTab((tab) => ({ ...tab, isModified: modified }));
   };
+
+  // A quiet update check shortly after start-up (installed apps, at most daily, can be turned
+  // off in About). The title bar then shows an Update button.
+  const checkUpdates = updates.check;
+  useEffect(() => {
+    if (!autoCheckDue()) return;
+    const t = window.setTimeout(() => {
+      void checkUpdates(true).then((found) => {
+        if (found) {
+          showToast(
+            found.version
+              ? `Qalam Urdu Studio ${found.version} is available. Click Update in the title bar.`
+              : 'A new version is available. Click Update in the title bar.',
+            8000
+          );
+        }
+      });
+    }, 4000);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkUpdates]);
 
   // Auto-save open document tabs to localStorage
   useEffect(() => {
@@ -1414,6 +1439,8 @@ export default function App() {
           onToggleLanguage={handleToggleLanguage}
           onCloseApp={handleExitApp}
           onOpenDownload={() => setIsDownloadOpen(true)}
+          update={foundUpdate ? { version: foundUpdate.version } : null}
+          onOpenUpdate={() => setIsAboutOpen(true)}
         />
 
       {/* 2. Microsoft Word-Style Tabbed Ribbon */}
@@ -1736,7 +1763,7 @@ export default function App() {
         keyboardLayout={keyboardLayout}
       />
 
-      <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+      <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} updates={updates} />
 
       <PrintPreviewModal
         isOpen={isPrintPreviewOpen}

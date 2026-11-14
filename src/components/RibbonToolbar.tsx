@@ -334,7 +334,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
     }`;
 
   const tallBtnClass = (active = false) =>
-    `px-2.5 py-1 min-w-[58px] h-[54px] flex flex-col items-center justify-center gap-1 text-[11px] font-medium whitespace-nowrap shrink-0 rounded-md border transition-colors disabled:opacity-35 disabled:pointer-events-none ${
+    `px-2.5 py-1 min-w-[58px] h-[54px] short:h-[46px] short:gap-0.5 flex flex-col items-center justify-center gap-1 text-[11px] font-medium whitespace-nowrap shrink-0 rounded-md border transition-colors disabled:opacity-35 disabled:pointer-events-none ${
       active
         ? 'bg-blue-50 text-blue-700 border-blue-300 shadow-2xs'
         : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 shadow-2xs'
@@ -358,8 +358,9 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
 
   const renderGroup = (label: string, children: React.ReactNode) => (
     <div className="flex flex-col justify-between shrink-0 px-1">
-      <div className="flex items-center gap-1.5 min-h-[50px]">{children}</div>
-      <div className="text-[10px] text-slate-400 font-medium text-center leading-none pt-1 tracking-tight">
+      <div className="flex items-center gap-1.5 min-h-[50px] short:min-h-0">{children}</div>
+      {/* Group names give way to the page in short windows (high display scaling). */}
+      <div className="short:hidden text-[10px] text-slate-400 font-medium text-center leading-none pt-1 tracking-tight">
         {label}
       </div>
     </div>
@@ -931,7 +932,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
 
       {/* 2. Microsoft Word-style Ribbon Body */}
       {showRibbon && (
-        <div className="bg-white border-b border-slate-200 px-2 sm:px-2.5 py-1.5 flex items-stretch overflow-x-auto no-scrollbar touch-pan-x gap-0.5 text-slate-800">
+        <div className="bg-white border-b border-slate-200 px-2 sm:px-2.5 py-1.5 short:py-1 flex items-stretch overflow-x-auto no-scrollbar touch-pan-x gap-0.5 text-slate-800">
           {/* ================= HOME TAB ================= */}
           {activeTab === 'home' && (
             <>

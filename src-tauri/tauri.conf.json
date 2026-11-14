@@ -16,8 +16,8 @@
         "title": "Qalam Urdu Studio",
         "width": 1366,
         "height": 860,
-        "minWidth": 900,
-        "minHeight": 600,
+        "minWidth": 360,
+        "minHeight": 400,
         "center": true,
         "maximized": true,
         "dragDropEnabled": false
@@ -25,6 +25,17 @@
     ],
     "security": {
       "csp": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNFQkE4RUQ2MDVEQTdCQjgKUldTNGU5b0YxbzY2UHJQVCtEdFV1OXhoR0g3bVBwaTh4bXpOV1NPZEZTdnY1NzhMMjgzVUlYZTIK",
+      "endpoints": [
+        "https://github.com/uzairasad/qalam-urdu-studio/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   },
   "bundle": {

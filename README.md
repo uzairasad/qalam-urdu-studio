@@ -14,6 +14,7 @@ Created by **Uzair Asad**
 [Changelog](CHANGELOG.md)
 
 [![License: GPL v3+](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
+[![CI](https://github.com/uzairasad/qalam-urdu-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/uzairasad/qalam-urdu-studio/actions/workflows/ci.yml)
 
 </div>
 
@@ -36,6 +37,10 @@ Linux and Android, and in any modern browser.
   Word, PNG, HTML and Unicode text.
 - **Print-ready.** Print preview and native printing at the exact physical page size.
 - **Works offline.** Nothing is loaded from the internet once the app is installed.
+- **Updates itself.** The desktop apps install signed updates in place (File → About → Check for
+  updates, or a quiet check at start-up at most once a day, which you can turn off).
+- **Fits any screen.** At 150–200% display scaling or in short windows the window fits the
+  screen and the ribbon goes compact, so the page keeps the room.
 
 ## Download
 
@@ -91,6 +96,10 @@ So Qalam is built in layers:
   the already-running window.
 - **Restricted file access.** The editor can only read files the user opened through the OS, and
   can only write where the user chooses in a Save dialog.
+- **Updates.** The desktop apps use Tauri's updater: they read `latest.json` from the latest
+  GitHub release, check the download's signature against the key built into the app, install
+  it and restart. Portable and .deb/.rpm copies, and the Android app, are sent to the download
+  page instead; the web app updates itself. The check only asks GitHub for the latest release.
 - **Fonts included.** All typesetting fonts are bundled (`src/fonts.css`), so pages look the
   same everywhere and work with no network connection.
 
@@ -123,6 +132,7 @@ npm run app:build    # installers in target/release/bundle/
 npm run dev          # web app only, http://localhost:3000
 npm run build        # web app (dist/) + single-file offline HTML
 npm run lint         # TypeScript type check
+npm test             # unit tests (node --test)
 ```
 
 Rust checks: `cargo fmt --all`, `cargo clippy --workspace --all-targets -- -D warnings`,

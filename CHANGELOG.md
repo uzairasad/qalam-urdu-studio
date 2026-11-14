@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- In-app updates. The desktop apps check GitHub for a new version (File → About → Check for
+  updates, or automatically at start-up, at most once a day; you can turn this off), then
+  download it, verify its signature, install it and restart, with your open documents kept.
+  The portable Windows copy, Linux .deb/.rpm installs and the Android app open the download
+  instead, and the web app offers "Reload to update". An Update button appears in the title bar
+  when a new version is found.
+- Display scaling: the window now fits the screen at 150–200% scaling (the minimum size used to
+  be taller than some laptop screens), and in short windows the ribbon and tab bar go compact so
+  the page keeps more room. The About box scrolls instead of being cut off, and Escape closes it.
+- Unit tests (`npm test`) now run in CI.
+
 ## 0.1.3 — 2026-11-14
 
 - Qalam Urdu Studio is now open source under the GNU GPL v3.0 or later. The About box shows the
