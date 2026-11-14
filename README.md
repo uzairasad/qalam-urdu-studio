@@ -86,7 +86,7 @@ So Qalam is built in layers:
   through `src/platform/native.ts`, which calls the Rust shell inside the app and falls back to
   browser behaviour on the web.
 - **Small, native apps.** The Rust shell uses the web engine the system already has, so
-  most installers are about 10 MB. It adds what a browser tab can't do: Save dialogs that remember
+  most installers are about 6 MB. It adds what a browser tab can't do: Save dialogs that remember
   the last folder, native printing, double-click to open `.qlm` files, and handing documents to
   the already-running window.
 - **Restricted file access.** The editor can only read files the user opened through the OS, and
