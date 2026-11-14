@@ -84,7 +84,10 @@ before dev builds dropped dependency debug info in `Cargo.toml`).
    aren't allowed to, and they aren't needed. `release.yml`'s `plan` job sees a version with no
    `vX.Y.Z` tag yet, creates the tag on that commit (pushing one by hand still works too).
 3. `release.yml` then builds all platforms, signs the APK (secrets `ANDROID_KEYSTORE_BASE64`,
-   `ANDROID_KEYSTORE_PASSWORD`, alias `qalam`), uploads SHA256SUMS and publishes.
+   `ANDROID_KEYSTORE_PASSWORD`, alias `qalam`), writes the updater feed `latest.json` (once, in
+   the publish job: builds updating it together clash), uploads SHA256SUMS and publishes. A run
+   that fails partway leaves a draft; the next push to `main` touching `release.yml` or
+   `package.json` finishes it.
    Actions → Release → Run workflow with `android_only` is a quick APK-only check.
 
 Commits are authored as `uzairasad <11199078+uzairasad@users.noreply.github.com>`.

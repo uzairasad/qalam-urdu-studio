@@ -199,7 +199,9 @@ jobs:
           releaseBody: See CHANGELOG.md. Verify downloads against SHA256SUMS.txt.
           releaseDraft: true
           prerelease: false
-          # The four builds update the release's latest.json at the same time; retry on a clash.
+          # The updater feed (latest.json) is written once by the publish job: four builds
+          # updating it at the same time clash. Failed uploads are retried.
+          includeUpdaterJson: false
           retryAttempts: 3
 
       - name: Portable zip (Windows)
@@ -322,11 +324,37 @@ jobs:
       GH_REPO: ${{ github.repository }}
       TAG: ${{ needs.plan.outputs.tag }}
     steps:
-      - name: SHA256SUMS.txt
+      - name: SHA256SUMS.txt and the updater feed
         run: |
           mkdir assets && cd assets
           gh release download "$TAG" --pattern '*' --skip-existing
-          rm -f SHA256SUMS.txt *.sig
+          rm -f latest.json SHA256SUMS.txt
+          # latest.json: what installed desktop apps check for updates, from the signed bundles.
+          node - <<'JS'
+          const fs = require('fs');
+          const tag = process.env.TAG;
+          const base = `https://github.com/${process.env.GH_REPO}/releases/download/${tag}/`;
+          const files = fs.readdirSync('.');
+          const entry = (re) => {
+            const f = files.find((n) => re.test(n) && files.includes(`${n}.sig`));
+            return f && { signature: fs.readFileSync(`${f}.sig`, 'utf8').trim(), url: base + encodeURIComponent(f) };
+          };
+          const p = {};
+          const add = (keys, e) => { if (e) for (const k of keys) p[k] = e; };
+          add(['darwin-aarch64', 'darwin-aarch64-app'], entry(/_aarch64\.app\.tar\.gz$/));
+          add(['darwin-x86_64', 'darwin-x86_64-app'], entry(/_x64\.app\.tar\.gz$/));
+          add(['windows-x86_64', 'windows-x86_64-msi'], entry(/\.msi$/));
+          add(['windows-x86_64-nsis'], entry(/-setup\.exe$/));
+          add(['linux-x86_64', 'linux-x86_64-appimage'], entry(/\.AppImage$/));
+          add(['linux-x86_64-deb'], entry(/\.deb$/));
+          add(['linux-x86_64-rpm'], entry(/\.rpm$/));
+          if (!Object.keys(p).length) { console.log('No signed bundles: no updater feed'); process.exit(0); }
+          const feed = { version: tag.replace(/^v/, ''), notes: 'See CHANGELOG.md. Verify downloads against SHA256SUMS.txt.', pub_date: new Date().toISOString(), platforms: p };
+          fs.writeFileSync('latest.json', JSON.stringify(feed, null, 2));
+          console.log(Object.keys(p).join(' '));
+          JS
+          [ -f latest.json ] && gh release upload "$TAG" latest.json --clobber
+          rm -f *.sig
           sha256sum * > SHA256SUMS.txt
           cat SHA256SUMS.txt
           gh release upload "$TAG" SHA256SUMS.txt --clobber
